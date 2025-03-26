@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package xllm_service.proto;
+
+message Empty {}
+
+message Status {
+  bool ok = 1;
+}
+
+service XllmService {
+  rpc Hello(Empty) returns (Status) {}
+}

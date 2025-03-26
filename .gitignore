@@ -1,0 +1,16 @@
+# Visual Studio Code
+/.vscode*
+
+# Idea
+/.idea
+/cmake-build-debug/
+/cmake-build-release/
+
+# CMake
+/build*
+
+# cache
+/.*cache
+
+# deps
+/.deps

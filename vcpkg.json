@@ -1,0 +1,33 @@
+{
+  "name": "xllm",
+  "version": "0.0.1",
+  "dependencies": [
+    {
+      "name": "abseil",
+      "version>=": "20230125.3"
+    },
+    {
+      "name": "protobuf",
+      "version>=": "3.21.12"
+    },
+    {
+      "name": "gflags",
+      "version>=": "2.2.2#7"
+    },
+    {
+      "name": "gtest",
+      "version>=": "1.13.0"
+    },
+    {
+      "name": "glog",
+      "version>=": "0.6.0#2"
+    },
+    {
+      "name": "grpc",
+      "version>=": "1.51.1",
+      "default-features": false
+    }
+  ],
+  "builtin-baseline": "fba75d09065fcc76a25dcf386b1d00d33f5175af"
+}
+
