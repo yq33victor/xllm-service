@@ -11,3 +11,4 @@ message Status {
 service XllmService {
   rpc Hello(Empty) returns (Status) {}
 }
+

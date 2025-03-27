@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package xllm_service.proto;
+option cc_enable_arenas = true;
+option cc_generic_services = true;
+
+message HttpRequest {
+  string ping = 1;
+}
+
+message HttpResponse {
+  string pong = 1;
+}
+
+service XllmHttpService {
+  rpc Hello(HttpRequest) returns (HttpResponse) {}
+}

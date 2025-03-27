@@ -78,9 +78,19 @@ project("xllm_service" LANGUAGES C CXX)
 
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
+# include custom cmake modules
+include(static_analyzers)
+
+if(UNIX)
+  set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Og")
+endif()
+
 # find all dependencies from vcpkg
 find_package(glog CONFIG REQUIRED)
 find_package(gflags CONFIG REQUIRED)
+find_package(leveldb CONFIG REQUIRED)
+find_package(OpenSSL REQUIRED)
+find_package(ZLIB REQUIRED)
 find_package(absl CONFIG REQUIRED)
 find_package(Protobuf CONFIG REQUIRED)
 find_package(gRPC CONFIG REQUIRED)
@@ -94,12 +104,21 @@ if (USE_CXX11_ABI)
   endif()
 endif()
 
+message(STATUS "CMAKE_CXX_FLAGS: ${CMAKE_CXX_FLAGS}")
+message(STATUS "CMAKE_CXX_FLAGS_DEBUG: ${CMAKE_CXX_FLAGS_DEBUG}")
+
 list(APPEND COMMON_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR})
 list(APPEND COMMON_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/xllm_service)
 list(APPEND COMMON_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/xllm_service/include)
 list(APPEND COMMON_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/third_party)
 
+# brpc
+set(BRPC_OUTPUT_DIR ${CMAKE_BINARY_DIR}/third_party/brpc/output)
+include_directories(${BRPC_OUTPUT_DIR}/include)
+link_directories(${BRPC_OUTPUT_DIR}/lib)
+
 # add subdirectories
-add_subdirectory(xllm_service)
+#add_subdirectory(proto)
 add_subdirectory(third_party)
+add_subdirectory(xllm_service)
 
