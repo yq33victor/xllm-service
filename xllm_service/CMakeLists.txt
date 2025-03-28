@@ -11,9 +11,12 @@ cc_library(
   HDRS
     include/rpc_service/service.h
     include/utils.h
+    include/instance_mgr.h
+    include/types.h
   SRCS
     src/rpc_service/service.cpp
     src/utils.cpp
+    src/instance_mgr.cpp
   DEPS
     glog::glog
     grpc_proto::proto_service
@@ -55,3 +58,4 @@ cc_binary(
 )
 
 add_subdirectory(examples)
+add_subdirectory(tests)

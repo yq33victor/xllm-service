@@ -8,7 +8,23 @@ message Status {
   bool ok = 1;
 }
 
+message StatusCode {
+  int32 status_code = 1;
+}
+
+enum InstanceType {
+  DEFAULT = 0;
+  PREFILL = 1;
+  DECODE = 2;
+}
+
+message InstanceMetaInfo {
+  string name = 1;
+  optional InstanceType type = 2;
+}
+
 service XllmService {
   rpc Hello(Empty) returns (Status) {}
+  rpc RegisterInstance(InstanceMetaInfo) returns (StatusCode) {}
 }
 

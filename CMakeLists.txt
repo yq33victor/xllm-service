@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.26)
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
+enable_testing()
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -118,7 +120,6 @@ include_directories(${BRPC_OUTPUT_DIR}/include)
 link_directories(${BRPC_OUTPUT_DIR}/lib)
 
 # add subdirectories
-#add_subdirectory(proto)
 add_subdirectory(third_party)
 add_subdirectory(xllm_service)
 

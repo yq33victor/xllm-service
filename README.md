@@ -14,7 +14,13 @@ git submodule update
 mkdir -p build
 cd build
 cmake ..
-make -j8
+make
+```
+
+### Testing
+```
+# test all tests
+ctest
 ```
 
 ## License
