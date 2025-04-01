@@ -18,7 +18,7 @@ class XllmServiceTest : public ::testing::Test {
 
 TEST_F(XllmServiceTest, RegisterInstance) {
   auto xllm_service =
-      std::make_shared<XllmService>();
+      std::make_shared<XllmServiceImpl>();
   std::string inst_name = "127.0.0.1@xllm0";
   InstanceMetaInfo metainfo(inst_name, InstanceType::PREFILL);
   EXPECT_EQ(ErrorCode::OK, xllm_service->register_instance(inst_name, metainfo));

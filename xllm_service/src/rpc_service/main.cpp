@@ -7,7 +7,7 @@
 
 // Define command line flags
 DEFINE_int32(port, 9999, "Port for xllm rpc service to listen on");
-DEFINE_int32(max_threads, 8, "Maximum number of threads to use");
+DEFINE_int32(max_threads, 16, "Maximum number of threads to use");
 
 int main(int argc, char* argv[]) {
   // Initialize gflags
@@ -26,8 +26,8 @@ int main(int argc, char* argv[]) {
   }
 
   // create xllm service
-  auto xllm_service =
-      std::make_shared<xllm_service::XllmService>();
+  auto xllm_service_impl =
+      std::make_shared<xllm_service::XllmServiceImpl>();
 
   // Initialize gRPC server
   std::string server_address = "0.0.0.0:" + std::to_string(FLAGS_port);
@@ -38,7 +38,7 @@ int main(int argc, char* argv[]) {
                            grpc::InsecureServerCredentials());
 
   // Register service
-  xllm_service::XllmServiceImpl service(xllm_service);
+  xllm_service::XllmService service(xllm_service_impl);
   builder.RegisterService(&service);
 
   // Set thread pool size

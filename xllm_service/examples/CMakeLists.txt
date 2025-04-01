@@ -2,11 +2,22 @@ include(cc_binary)
 
 cc_binary(
   NAME 
-    xllm_client
+    hello_client
   SRCS 
-    client.cpp
+    hello_client.cpp
   DEPS
     :xllm_service
+    gflags::gflags
+    glog::glog
+)
+
+cc_binary(
+  NAME 
+    client_test
+  SRCS 
+  client_test.cpp
+  DEPS
+    :xllm_client
     gflags::gflags
     glog::glog
 )

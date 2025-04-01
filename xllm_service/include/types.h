@@ -41,7 +41,9 @@ struct InstanceMetaInfo {
 
   std::string name = "";
   InstanceType type = InstanceType::DEFAULT;
-  // TODO
+
+  // latest heatbeat timestamp
+  uint64_t latest_timestamp = 0;
 };
 
 } // xllm_service

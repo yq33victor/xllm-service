@@ -18,6 +18,7 @@ cc_library(
     src/utils.cpp
     src/instance_mgr.cpp
   DEPS
+    absl::strings
     glog::glog
     grpc_proto::proto_service
 )
@@ -30,6 +31,19 @@ cc_binary(
   DEPS
     :xllm_service
     gflags::gflags   
+)
+
+cc_library(
+  NAME
+  xllm_client
+  HDRS
+    include/rpc_service/client.h
+    include/types.h
+  SRCS
+    src/rpc_service/client.cpp
+  DEPS
+    glog::glog
+    grpc_proto::proto_service
 )
 
 # ---- http service ----

@@ -5,10 +5,11 @@
 
 namespace xllm_service {
 
-class XllmService final {
+class XllmServiceImpl final {
  public:
-  explicit XllmService();
-  ~XllmService();
+  explicit XllmServiceImpl();
+  ~XllmServiceImpl();
+  ErrorCode heartbeat(const std::string& instance_name);
 
   ErrorCode register_instance(const std::string& instance_name,
                               const InstanceMetaInfo& metainfo);
@@ -18,10 +19,10 @@ class XllmService final {
 };
 
 // parse proto data and call XllmService
-class XllmServiceImpl final : public proto::XllmService::Service {
+class XllmService final : public proto::XllmService::Service {
  public:
-  explicit XllmServiceImpl(std::shared_ptr<XllmService> service);
-  ~XllmServiceImpl();
+  explicit XllmService(std::shared_ptr<XllmServiceImpl> service);
+  ~XllmService();
 
   grpc::Status Hello(
         grpc::ServerContext* context,
@@ -33,8 +34,13 @@ class XllmServiceImpl final : public proto::XllmService::Service {
         const proto::InstanceMetaInfo* req,
         proto::StatusCode* resp) override;
 
+  grpc::Status Heartbeat(
+        grpc::ServerContext* context,
+        const proto::HeartbeatRequest* req,
+        proto::Status* resp) override;
+
  private:
-  std::shared_ptr<XllmService> xllm_service_;
+  std::shared_ptr<XllmServiceImpl> xllm_service_;
 };
 
 } // xllm_service

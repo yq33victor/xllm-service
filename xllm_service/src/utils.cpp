@@ -1,12 +1,26 @@
 #include "utils.h"
 
 #include <glog/logging.h>
+#include <mutex>
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
 namespace xllm_service {
 namespace utils {
+
+bool enable_debug_log() {
+  static bool debug_log_enabled = false;
+  static std::once_flag debug_flag;
+  std::call_once(debug_flag, []() {
+    const char *enable_debug_env = std::getenv("ENABLE_XLLM_DEBUG_LOG");
+    if (enable_debug_env != nullptr && std::string(enable_debug_env) == "1") {
+      debug_log_enabled = true;
+    }
+  });
+
+  return debug_log_enabled;
+}
 
 bool is_port_available(int port) {
   int fd = socket(AF_INET, SOCK_STREAM, 0);
