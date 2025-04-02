@@ -12,6 +12,8 @@ namespace xllm_service {
 static constexpr int kDetectIntervals = 15; // 15seconds
 
 InstanceMgr::InstanceMgr() {
+  disagg_pd_policy_ = std::make_unique<DisaggPdPolicy>(&instances_);
+
   heartbeat_thread_ =
       std::make_unique<std::thread>(&InstanceMgr::detect_disconnected_instances, this);
 }

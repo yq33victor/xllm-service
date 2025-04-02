@@ -12,10 +12,12 @@ cc_library(
     include/rpc_service/service.h
     include/utils.h
     include/instance_mgr.h
+    include/disagg_pd_policy.h
     include/types.h
   SRCS
     src/rpc_service/service.cpp
     src/utils.cpp
+    src/disagg_pd_policy.cpp
     src/instance_mgr.cpp
   DEPS
     absl::strings
