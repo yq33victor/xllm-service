@@ -3,6 +3,7 @@
 #include <glog/logging.h>
 
 #include "instance_mgr.h"
+#include "types.h"
 #include "utils.h"
 
 #include <iostream>
@@ -10,8 +11,28 @@ namespace xllm_service {
 
 // magic number, TODO: move to config file or env var
 static constexpr int kDetectIntervals = 15; // 15seconds
+static std::unordered_map<InstanceType, std::string> ETCD_KEYS_PREFIX_MAP =
+{
+  {InstanceType::DEFAULT, "XLLM:DEFAULT:"},
+  {InstanceType::PREFILL, "XLLM:PREFILL:"},
+  {InstanceType::DECODE, "XLLM:DECODE:"},
+};
+static std::string ETCD_ALL_KEYS_PREFIX = "XLLM:";
 
-InstanceMgr::InstanceMgr() {
+InstanceMgr::InstanceMgr(const std::string& etcd_addr) {
+  if (etcd_addr.empty()) {
+    LOG(INFO) << "Disable etcd meta server";
+    use_etcd_ = false;
+  } else {
+    LOG(INFO) << "Connect to etcd meta server: " << etcd_addr;
+    use_etcd_ = true;
+    etcd_client_ = std::make_unique<EtcdClient>(etcd_addr);
+  }
+
+  internal_init();
+}
+
+void InstanceMgr::internal_init() {
   disagg_pd_policy_ = std::make_unique<DisaggPdPolicy>(&instances_);
 
   heartbeat_thread_ =
@@ -42,10 +63,18 @@ void InstanceMgr::detect_disconnected_instances() {
           disconnected_instances_name.emplace_back(name);
         }
       }
+
+      // no instances disconnected, return
+      if (disconnected_instances_name.empty()) {
+        continue;
+      }
+
       if (utils::enable_debug_log()) {
         const auto instance_names = absl::StrJoin(disconnected_instances_name, ", ");
-        LOG(INFO) << "Detect disconnected instance, instance_name: " << instance_names;
+        LOG(WARNING) << "Detect disconnected instance, instance_name: " << instance_names;
       }
+      // detele instance metainfo from etcd
+      delete_persistence_metainfo(disconnected_instances_name);
       for (const auto& name : disconnected_instances_name) {
         instances_.erase(name);
       }
@@ -56,7 +85,7 @@ void InstanceMgr::detect_disconnected_instances() {
 ErrorCode InstanceMgr::register_instance(const std::string& instance_name) {
   std::lock_guard<std::mutex> guard(inst_mutex_);
   if (utils::enable_debug_log()) {
-    LOG(INFO) << "Register instance, instance_name: " << instance_name;
+    LOG(WARNING) << "Register instance, instance_name: " << instance_name;
   }
   if (instances_.find(instance_name) != instances_.end()) {
     LOG(ERROR) << "Instance is already registered, instance_name: " << instance_name;
@@ -65,6 +94,8 @@ ErrorCode InstanceMgr::register_instance(const std::string& instance_name) {
 
   InstanceMetaInfo default_info(instance_name);
   instances_[instance_name] = default_info;
+  // save instance metainfo to etcd
+  save_persistence_metainfo(default_info);
   return ErrorCode::OK;
 }
 
@@ -72,7 +103,7 @@ ErrorCode InstanceMgr::register_instance(const std::string& instance_name,
                                          const InstanceMetaInfo& metainfo) {
   std::lock_guard<std::mutex> guard(inst_mutex_);
   if (utils::enable_debug_log()) {
-    LOG(INFO) << "Register instance, instance_name: " << instance_name;
+    LOG(WARNING) << "Register instance, instance_name: " << instance_name;
   }
   if (instances_.find(instance_name) != instances_.end()) {
     LOG(ERROR) << "Instance is already registered, instance_name: " << instance_name;
@@ -80,6 +111,8 @@ ErrorCode InstanceMgr::register_instance(const std::string& instance_name,
   }
 
   instances_[instance_name] = metainfo;
+  // save instance metainfo to etcd
+  save_persistence_metainfo(metainfo);
   return ErrorCode::OK;
 }
 
@@ -87,25 +120,81 @@ ErrorCode InstanceMgr::update_instance_metainfo(const std::string& instance_name
                                                 const InstanceMetaInfo& metainfo) {
   std::lock_guard<std::mutex> guard(inst_mutex_);
   if (utils::enable_debug_log()) {
-    LOG(INFO) << "Update instance metainfo, instance_name: " << instance_name;
+    LOG(WARNING) << "Update instance metainfo, instance_name: " << instance_name;
   }
   if (instances_.find(instance_name) == instances_.end()) {
     LOG(ERROR) << "Instance is not registered, instance_name: " << instance_name;
-    return ErrorCode::INSTANCE_EXISTED; 
+    return ErrorCode::INSTANCE_NOT_EXISTED;
   }
 
   instances_[instance_name] = metainfo;
   return ErrorCode::OK;
 }
 
+void InstanceMgr::save_persistence_metainfo(const InstanceMetaInfo& metainfo) {
+  if (!use_etcd_) {
+    return;
+  }
+  std::string key = ETCD_KEYS_PREFIX_MAP[metainfo.type] + metainfo.name;
+  InstanceIdentityInfo value;
+  value.instance_addr = metainfo.name;
+  value.instance_type = static_cast<int8_t>(metainfo.type);
+  bool ok = etcd_client_->set(key, value);
+  if (!ok) {
+    LOG(ERROR) << "Save instance metainfo to etcd failed, key: " << key;
+    return;
+  }
+
+  if (utils::enable_debug_log()) {
+    InstanceIdentityInfo debug_value;
+    bool ok = etcd_client_->get(key, debug_value);
+    if (!ok) {
+      LOG(ERROR) << "Get instance metainfo from etcd failed, key: " << key;
+      return;
+    }
+    LOG(WARNING) << "Instance after put: " << debug_value.debug_string();
+  }
+}
+
+void InstanceMgr::delete_persistence_metainfo(
+    const std::vector<std::string>& instance_names) {
+  if (!use_etcd_ || instance_names.empty()) {
+    return;
+  }
+  // TODO: use batch delete later
+  for (const auto& name : instance_names) {
+    InstanceMetaInfo& metainfo = instances_[name];
+    std::string key = ETCD_KEYS_PREFIX_MAP[metainfo.type] + metainfo.name;
+    bool ok = etcd_client_->rm(key);
+    if (!ok) {
+      LOG(ERROR) << "Delete instance metainfo from etcd failed, key: " << key;
+    }
+  }
+
+  if (utils::enable_debug_log()) {
+    std::vector<InstanceIdentityInfo> debug_values;
+    bool ok = etcd_client_->get_prefix(ETCD_ALL_KEYS_PREFIX, debug_values);
+    if (!ok) {
+      LOG(ERROR) << "Get instance metainfo from etcd failed, key: " << ETCD_ALL_KEYS_PREFIX;
+      return;
+    }
+    std::string concat_debug_str;
+    for (const auto& v : debug_values) {
+      concat_debug_str += v.debug_string();
+      concat_debug_str += "\n";
+    }
+    LOG(WARNING) << "Instances after delete: " << concat_debug_str;
+  }
+}
+
 ErrorCode InstanceMgr::heartbeat(const std::string& instance_name) {
   std::lock_guard<std::mutex> guard(inst_mutex_);
   if (utils::enable_debug_log()) {
-    LOG(INFO) << "Receive heartbeat, instance_name: " << instance_name;
+    LOG(WARNING) << "Receive heartbeat, instance_name: " << instance_name;
   }
   if (instances_.find(instance_name) == instances_.end()) {
     LOG(ERROR) << "Instance is not registered, instance_name: " << instance_name;
-    return ErrorCode::INSTANCE_EXISTED; 
+    return ErrorCode::INSTANCE_NOT_EXISTED;
   }
 
   auto now = std::chrono::system_clock::now();

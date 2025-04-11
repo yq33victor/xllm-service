@@ -88,6 +88,7 @@ if(UNIX)
 endif()
 
 # find all dependencies from vcpkg
+find_package(Boost REQUIRED)
 find_package(glog CONFIG REQUIRED)
 find_package(gflags CONFIG REQUIRED)
 find_package(leveldb CONFIG REQUIRED)
@@ -97,6 +98,7 @@ find_package(absl CONFIG REQUIRED)
 find_package(Protobuf CONFIG REQUIRED)
 find_package(gRPC CONFIG REQUIRED)
 find_package(GTest CONFIG REQUIRED)
+find_package(nlohmann_json CONFIG REQUIRED)
 
 if (USE_CXX11_ABI)
   # only use jemalloc if using the new C++-11 ABI
@@ -113,6 +115,18 @@ list(APPEND COMMON_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR})
 list(APPEND COMMON_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/xllm_service)
 list(APPEND COMMON_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/xllm_service/include)
 list(APPEND COMMON_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/third_party)
+list(APPEND COMMON_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/third_party/etcd_cpp_apiv3)
+
+# cpprestsdk
+set(CPPREST_EXCLUDE_WEBSOCKETS ON CACHE BOOL "Exclude websockets functionality." FORCE)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-format-truncation")
+set(CPPREST_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/cpprestsdk/Release/include)
+set(CPPREST_LIB ${CMAKE_BINARY_DIR}/third_party/cpprestsdk/Release/Binaries)
+
+# etcd client v3
+set(ETCD_CLIENT_OUTPUT_DIR ${CMAKE_BINARY_DIR}/third_party/etcd_cpp_apiv3)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/third_party/cpprestsdk)
+link_directories(${ETCD_CLIENT_OUTPUT_DIR}/src)
 
 # brpc
 set(BRPC_OUTPUT_DIR ${CMAKE_BINARY_DIR}/third_party/brpc/output)

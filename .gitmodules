@@ -2,3 +2,11 @@
 	path = third_party/brpc
 	url = git@coding.jd.com:9n_thirdparty/brpc_4_xllm.git
         branch = 1.12.1_cmake
+[submodule "third_party/etcd_cpp_apiv3"]
+	path = third_party/etcd_cpp_apiv3
+	url = https://github.com/etcd-cpp-apiv3/etcd-cpp-apiv3.git
+        branch = v0.15.4
+[submodule "third_party/cpprestsdk"]
+	path = third_party/cpprestsdk
+	url = https://github.com/microsoft/cpprestsdk.git
+        branch = v2.10.19

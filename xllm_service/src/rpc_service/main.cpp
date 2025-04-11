@@ -8,6 +8,7 @@
 // Define command line flags
 DEFINE_int32(port, 9999, "Port for xllm rpc service to listen on");
 DEFINE_int32(max_threads, 16, "Maximum number of threads to use");
+DEFINE_string(etcd_addr, "", "etcd adderss for save instance meta info");
 
 int main(int argc, char* argv[]) {
   // Initialize gflags
@@ -27,7 +28,7 @@ int main(int argc, char* argv[]) {
 
   // create xllm service
   auto xllm_service_impl =
-      std::make_shared<xllm_service::XllmServiceImpl>();
+      std::make_shared<xllm_service::XllmServiceImpl>(FLAGS_etcd_addr);
 
   // Initialize gRPC server
   std::string server_address = "0.0.0.0:" + std::to_string(FLAGS_port);

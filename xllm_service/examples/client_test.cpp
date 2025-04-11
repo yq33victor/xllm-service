@@ -4,6 +4,7 @@
 #include "rpc_service/client.h"
 
 DEFINE_string(server_address, "localhost:9999", "Grpc server address.");
+DEFINE_string(client_name, "127.0.0.1@nic0", "client name.");
 
 int main(int argc, char* argv[]) {
   // initialize glog and gflags
@@ -14,7 +15,7 @@ int main(int argc, char* argv[]) {
   std::string server_address(FLAGS_server_address);
 
   // Create a client instance
-  xllm_service::XllmClient client("127.0.0.1@nic0", server_address);
+  xllm_service::XllmClient client(FLAGS_client_name, server_address);
 
   // Register the instance
   auto ret = client.register_instance();

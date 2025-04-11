@@ -13,16 +13,21 @@ cc_library(
     include/utils.h
     include/instance_mgr.h
     include/disagg_pd_policy.h
+    include/etcd_client.h
     include/types.h
   SRCS
     src/rpc_service/service.cpp
     src/utils.cpp
     src/disagg_pd_policy.cpp
     src/instance_mgr.cpp
+    src/etcd_client.cpp
   DEPS
     absl::strings
+    cpprest
+    etcd-cpp-api
     glog::glog
     grpc_proto::proto_service
+    nlohmann_json::nlohmann_json
 )
 
 cc_binary(

@@ -7,15 +7,17 @@ namespace xllm_service {
 
 class XllmServiceImpl final {
  public:
-  explicit XllmServiceImpl();
+  XllmServiceImpl(const std::string& etcd_addr);
   ~XllmServiceImpl();
   ErrorCode heartbeat(const std::string& instance_name);
 
   ErrorCode register_instance(const std::string& instance_name,
                               const InstanceMetaInfo& metainfo);
+  ErrorCode update_instance_metainfo(const std::string& instance_name,
+                                     const InstanceMetaInfo& metainfo);
 
  private:
-  InstanceMgr instance_mgr_;
+  std::unique_ptr<InstanceMgr> instance_mgr_;
 };
 
 // parse proto data and call XllmService

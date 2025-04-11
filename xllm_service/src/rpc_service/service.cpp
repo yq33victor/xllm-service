@@ -3,19 +3,25 @@
 
 namespace xllm_service {
 
-XllmServiceImpl::XllmServiceImpl() {
+XllmServiceImpl::XllmServiceImpl(const std::string& etcd_addr) {
+  instance_mgr_ = std::make_unique<InstanceMgr>(etcd_addr);
 }
 
 XllmServiceImpl::~XllmServiceImpl() {
 }
 
 ErrorCode XllmServiceImpl::heartbeat(const std::string& instance_name) {
-  return instance_mgr_.heartbeat(instance_name);
+  return instance_mgr_->heartbeat(instance_name);
 }
 
 ErrorCode XllmServiceImpl::register_instance(const std::string& instance_name,
                                              const InstanceMetaInfo& metainfo) {
-  return instance_mgr_.register_instance(instance_name, metainfo);
+  return instance_mgr_->register_instance(instance_name, metainfo);
+}
+
+ErrorCode XllmServiceImpl::update_instance_metainfo(const std::string& instance_name,
+                                                    const InstanceMetaInfo& metainfo) {
+  return instance_mgr_->update_instance_metainfo(instance_name, metainfo);
 }
 
 XllmService::XllmService(std::shared_ptr<XllmServiceImpl> service)
