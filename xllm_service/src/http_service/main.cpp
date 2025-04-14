@@ -28,7 +28,8 @@ int main(int argc, char** argv) {
   brpc::Server server;
   if (server.AddService(&service_impl,
                         brpc::SERVER_DOESNT_OWN_SERVICE,
-                        "/hello => Hello,") != 0) {
+                        "/hello => Hello,"
+                        "/v1/completions => Completions,") != 0) {
     LOG(ERROR) << "Fail to add brpc http service";
     return false;
   }
@@ -38,7 +39,7 @@ int main(int argc, char** argv) {
   options.num_threads = FLAGS_num_threads;
   options.max_concurrency = FLAGS_max_concurrency;
   if (server.Start(FLAGS_port, &options) != 0) {
-    LOG(ERROR) << "Failed to start brpc http server on port" << FLAGS_port;
+    LOG(ERROR) << "Failed to start brpc http server on port " << FLAGS_port;
     return false;
   }
   LOG(INFO) << "Brpc Http Server started on port " << FLAGS_port

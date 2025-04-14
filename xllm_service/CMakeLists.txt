@@ -60,13 +60,18 @@ cc_library(
   xllm_http_service
   HDRS
     include/http_service/service.h
+    include/common/concurrent_queue.h
+    include/common/threadpool.h
   SRCS
     src/http_service/service.cpp
+    src/common/threadpool.cpp
   DEPS
+    absl::synchronization
     glog::glog
+    nlohmann_json::nlohmann_json
     proto::proto_http_service
 )
-target_link_libraries(xllm_http_service PRIVATE brpc leveldb::leveldb ZLIB::ZLIB protobuf::libprotobuf OpenSSL::SSL OpenSSL::Crypto)
+target_link_libraries(xllm_http_service PRIVATE brpc-static leveldb::leveldb ZLIB::ZLIB protobuf::libprotobuf OpenSSL::SSL OpenSSL::Crypto)
 
 cc_binary(
   NAME 

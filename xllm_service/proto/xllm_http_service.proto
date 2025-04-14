@@ -4,14 +4,21 @@ package xllm_service.proto;
 option cc_enable_arenas = true;
 option cc_generic_services = true;
 
-message HttpRequest {
+message HttpHelloRequest {
   string ping = 1;
 }
 
-message HttpResponse {
+message HttpHelloResponse {
   string pong = 1;
 }
 
+message HttpRequest {
+}
+
+message HttpResponse {
+}
+
 service XllmHttpService {
-  rpc Hello(HttpRequest) returns (HttpResponse) {}
+  rpc Hello(HttpHelloRequest) returns (HttpHelloResponse) {}
+  rpc Completions (HttpRequest) returns (HttpResponse) {}
 }
