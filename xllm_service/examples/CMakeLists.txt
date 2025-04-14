@@ -15,9 +15,19 @@ cc_binary(
   NAME 
     client_test
   SRCS 
-  client_test.cpp
+    client_test.cpp
   DEPS
     :xllm_client
     gflags::gflags
     glog::glog
+)
+
+cc_binary(
+  NAME 
+    brpc_http_client_test
+  SRCS 
+    brpc_http_client.cpp
+  DEPS
+    brpc
+    gflags::gflags
 )
