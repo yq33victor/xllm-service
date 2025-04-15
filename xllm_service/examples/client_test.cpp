@@ -5,6 +5,13 @@
 
 DEFINE_string(server_address, "localhost:9999", "Grpc server address.");
 DEFINE_string(client_name, "127.0.0.1@nic0", "client name.");
+DEFINE_string(protocol, "baidu_std", "Protocol type. Defined in src/brpc/options.proto");
+DEFINE_string(connection_type, "", "Connection type. Available values: single, pooled, short");
+DEFINE_string(server, "0.0.0.0:8000", "IP Address of server");
+DEFINE_string(load_balancer, "", "The algorithm for load balancing");
+DEFINE_int32(timeout_ms, 100, "RPC timeout in milliseconds");
+DEFINE_int32(max_retry, 3, "Max retries(not including the first RPC)");
+DEFINE_int32(interval_ms, 1000, "Milliseconds between consecutive requests");
 
 int main(int argc, char* argv[]) {
   // initialize glog and gflags
@@ -14,8 +21,10 @@ int main(int argc, char* argv[]) {
   // Define the server address and port
   std::string server_address(FLAGS_server_address);
 
+  xllm_service::ChannelOptions options;
+
   // Create a client instance
-  xllm_service::XllmClient client(FLAGS_client_name, server_address);
+  xllm_service::XllmClient client(FLAGS_client_name, server_address, options);
 
   // Register the instance
   auto ret = client.register_instance();

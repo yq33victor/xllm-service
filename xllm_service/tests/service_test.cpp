@@ -41,4 +41,4 @@ TEST_F(XllmServiceTest, UpdateInstanceMetainfo) {
   EXPECT_EQ(ErrorCode::INSTANCE_NOT_EXISTED, xllm_service->update_instance_metainfo(inst_name2, metainfo));
 }
 
-} // xllm_service::test
+} // namespace xllm_service::test

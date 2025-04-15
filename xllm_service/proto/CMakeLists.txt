@@ -1,7 +1,7 @@
 include(grpc_proto_library)
 include(proto_library)
 
-grpc_proto_library(
+proto_library(
   NAME
     proto_service
   SRCS

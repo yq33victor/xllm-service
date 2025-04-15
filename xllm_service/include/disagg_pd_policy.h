@@ -25,4 +25,4 @@ class DisaggPdPolicy {
   const std::unordered_map<std::string, InstanceMetaInfo>* instances_; // not owned
 };
 
-} // xllm_service
+} // namespace xllm_service

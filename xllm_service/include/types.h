@@ -76,4 +76,4 @@ struct InstanceIdentityInfo {
   }
 };
 
-} // xllm_service
+} // namespace xllm_service

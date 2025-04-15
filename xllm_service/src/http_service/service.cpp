@@ -124,4 +124,4 @@ void XllmHttpServiceImpl::Completions(::google::protobuf::RpcController* control
   });
 }
 
-} // xllm_service
+} // namespace xllm_service

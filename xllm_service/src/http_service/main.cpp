@@ -42,7 +42,8 @@ int main(int argc, char** argv) {
     LOG(ERROR) << "Failed to start brpc http server on port " << FLAGS_port;
     return false;
   }
-  LOG(INFO) << "Brpc Http Server started on port " << FLAGS_port
+
+  LOG(INFO) << "Xllm http server started on port " << FLAGS_port
             << ", idle_timeout_sec: " << FLAGS_idle_timeout_s
             << ", num_threads: " << FLAGS_num_threads
             << ", max_concurrency: " << FLAGS_max_concurrency;

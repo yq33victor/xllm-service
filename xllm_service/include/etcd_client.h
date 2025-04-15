@@ -27,4 +27,4 @@ class EtcdClient {
   std::string etcd_addr_;
 };
 
-} // xllm_service
+} // namespace xllm_service

@@ -39,4 +39,4 @@ class XllmHttpServiceImpl : public proto::XllmHttpService {
   std::mutex channel_mutex_;
 };
 
-} // xllm_service
+} // namespace xllm_service

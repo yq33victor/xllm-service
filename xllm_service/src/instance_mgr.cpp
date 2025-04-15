@@ -2,9 +2,9 @@
 #include <chrono>
 #include <glog/logging.h>
 
+#include "common/utils.h"
 #include "instance_mgr.h"
 #include "types.h"
-#include "utils.h"
 
 #include <iostream>
 namespace xllm_service {
@@ -205,4 +205,4 @@ ErrorCode InstanceMgr::heartbeat(const std::string& instance_name) {
   return ErrorCode::OK;
 }
 
-} // xllm_service
+} // namespace xllm_service

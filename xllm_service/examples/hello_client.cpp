@@ -1,51 +1,70 @@
+#include <butil/time.h>
+#include <brpc/channel.h>
 #include <gflags/gflags.h>
 #include <glog/logging.h>
-#include <grpc/grpc.h>
-#include <grpcpp/channel.h>
-#include <grpcpp/client_context.h>
-#include <grpcpp/create_channel.h>
-#include <grpcpp/security/credentials.h>
-#include <grpcpp/support/sync_stream.h>
-
 #include <iostream>
 #include <memory>
 #include <string>
 
-#include "xllm_service.grpc.pb.h"
+#include "xllm_service.pb.h"
 
 DEFINE_string(server_address, "localhost:9999", "Grpc server address.");
+DEFINE_string(protocol, "baidu_std", "Protocol type. Defined in src/brpc/options.proto");
+DEFINE_string(connection_type, "", "Connection type. Available values: single, pooled, short");
+DEFINE_string(load_balancer, "", "The algorithm for load balancing");
+DEFINE_int32(timeout_ms, 100, "RPC timeout in milliseconds");
+DEFINE_int32(max_retry, 3, "Max retries(not including the first RPC)");
+DEFINE_int32(interval_ms, 1000, "Milliseconds between consecutive requests");
 
 namespace xllm_service {
+namespace test {
 
-using grpc::Channel;
-using grpc::ClientContext;
-using grpc::ClientReader;
-using grpc::Status;
+struct ChannelOptions {
+  std::string protocol = "baidu_std";
+  std::string connection_type = "";
+  std::string load_balancer = "";
+  int timeout_ms = 100;
+  int max_retry = 3;
+  int interval_ms = 1000;
+};
+
 class HelloClient final {
  public:
-  HelloClient(std::shared_ptr<Channel> channel)
-      : stub_(proto::XllmService::NewStub(channel)) {}
+  HelloClient(const std::string& addr, ChannelOptions options) {
+    brpc::ChannelOptions chan_options;
+    chan_options.protocol = options.protocol;
+    chan_options.connection_type = options.connection_type;
+    chan_options.timeout_ms = options.timeout_ms/*milliseconds*/;
+    chan_options.max_retry = options.max_retry;
+    if (master_channel_.Init(addr.c_str(), options.load_balancer.c_str(), &chan_options) != 0) {
+      LOG(ERROR) << "Fail to initialize brpc channel to server " << addr;
+      return;
+    }
+    master_stub_ = std::make_unique<proto::XllmService_Stub>(&master_channel_);
+  }
 
   void hello() {
     // Create a message to send to the server
+    brpc::Controller cntl;
     proto::Empty request;
     proto::Status response;
-
-    // Create a stream for receiving messages
-    grpc::ClientContext ctx;
-    auto status = stub_->Hello(&ctx, request, &response);
-    if (!status.ok()) {
-      std::cout << "Send to server faild, err msg:"
-                << status.error_message() << "\n";
+    master_stub_->Hello(&cntl, &request, &response, nullptr);
+    if (cntl.Failed()) {
+      LOG(ERROR) << "Send to server faild, err msg:"
+                 << cntl.ErrorText();
+      return;
     }
+
     std::cout << "Get server response: " << response.ok() << "\n";
   }
 
  private:
-  std::unique_ptr<proto::XllmService::Stub> stub_;
+  brpc::Channel master_channel_;
+  std::unique_ptr<proto::XllmService_Stub> master_stub_;
 };
 
-}  // xllm_service
+}  // namespace test
+}  // namespace xllm_service
 
 
 int main(int argc, char* argv[]) {
@@ -56,12 +75,16 @@ int main(int argc, char* argv[]) {
   // Define the server address and port
   std::string server_address(FLAGS_server_address);
 
-  // Create a gRPC channel
-  auto channel =
-      grpc::CreateChannel(server_address, grpc::InsecureChannelCredentials());
+  xllm_service::test::ChannelOptions opt;
+  opt.protocol = FLAGS_protocol;
+  opt.connection_type = FLAGS_connection_type;
+  opt.load_balancer = FLAGS_load_balancer;
+  opt.timeout_ms = FLAGS_timeout_ms;
+  opt.max_retry = FLAGS_max_retry;
+  opt.interval_ms = FLAGS_interval_ms;
 
   // Create a chat client
-  xllm_service::HelloClient client(channel);
+  xllm_service::test::HelloClient client(server_address, opt);
 
   client.hello();
 

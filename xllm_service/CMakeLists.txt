@@ -9,24 +9,25 @@ cc_library(
   NAME
   xllm_service
   HDRS
+    include/common/utils.h
     include/rpc_service/service.h
-    include/utils.h
     include/instance_mgr.h
     include/disagg_pd_policy.h
     include/etcd_client.h
     include/types.h
   SRCS
+    src/common/utils.cpp
     src/rpc_service/service.cpp
-    src/utils.cpp
     src/disagg_pd_policy.cpp
     src/instance_mgr.cpp
     src/etcd_client.cpp
   DEPS
     absl::strings
+    brpc-static
     cpprest
     etcd-cpp-api
     glog::glog
-    grpc_proto::proto_service
+    proto::proto_service
     nlohmann_json::nlohmann_json
 )
 
@@ -49,8 +50,9 @@ cc_library(
   SRCS
     src/rpc_service/client.cpp
   DEPS
+    brpc-static
     glog::glog
-    grpc_proto::proto_service
+    proto::proto_service
 )
 
 # ---- http service ----

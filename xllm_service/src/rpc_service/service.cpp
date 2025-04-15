@@ -1,3 +1,5 @@
+#include <brpc/closure_guard.h>
+
 #include "rpc_service/service.h"
 #include "types.h"
 
@@ -31,18 +33,21 @@ XllmService::XllmService(std::shared_ptr<XllmServiceImpl> service)
 XllmService::~XllmService() {
 }
 
-grpc::Status XllmService::Hello(
-    grpc::ServerContext* context,
+void XllmService::Hello(
+    google::protobuf::RpcController* cntl_base,
     const proto::Empty* req,
-    proto::Status* resp) {
+    proto::Status* resp,
+    google::protobuf::Closure* done) {
+  brpc::ClosureGuard done_guard(done);
   resp->set_ok(true);
-  return grpc::Status::OK;
 }
 
-grpc::Status XllmService::RegisterInstance(
-    grpc::ServerContext* context,
+void XllmService::RegisterInstance(
+    google::protobuf::RpcController* cntl_base,
     const proto::InstanceMetaInfo* req,
-    proto::StatusCode* resp) {
+    proto::StatusCode* resp,
+    google::protobuf::Closure* done) {
+  brpc::ClosureGuard done_guard(done);
   InstanceType type = InstanceType::DEFAULT;
   if (req->has_type() && req->type() == proto::InstanceType::PREFILL) {
     type = InstanceType::PREFILL;
@@ -52,17 +57,17 @@ grpc::Status XllmService::RegisterInstance(
   InstanceMetaInfo metainfo(req->name(), type);
   ErrorCode code = xllm_service_->register_instance(req->name(), metainfo);
   resp->set_status_code(ConvertErrorCode::to_int(code));
-  return grpc::Status::OK;
 }
 
-grpc::Status XllmService::Heartbeat(
-    grpc::ServerContext* context,
+void XllmService::Heartbeat(
+    google::protobuf::RpcController* cntl_base,
     const proto::HeartbeatRequest* req,
-    proto::Status* resp) {
+    proto::Status* resp,
+    google::protobuf::Closure* done) {
+  brpc::ClosureGuard done_guard(done);
   auto inst_name = req->name();
   xllm_service_->heartbeat(inst_name);
   resp->set_ok(true);
-  return grpc::Status::OK;
 }
 
-} // xllm_service
+} // namespace xllm_service

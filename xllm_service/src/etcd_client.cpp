@@ -88,4 +88,4 @@ bool EtcdClient::rm(const std::string& key) {
   return true;
 }
 
-} // xllm_service
+} // namespace xllm_service

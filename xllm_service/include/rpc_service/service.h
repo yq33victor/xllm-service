@@ -1,7 +1,7 @@
 #pragma once
 
 #include "instance_mgr.h"
-#include "xllm_service.grpc.pb.h"
+#include "xllm_service.pb.h"
 
 namespace xllm_service {
 
@@ -21,28 +21,31 @@ class XllmServiceImpl final {
 };
 
 // parse proto data and call XllmService
-class XllmService final : public proto::XllmService::Service {
+class XllmService : public proto::XllmService {
  public:
   explicit XllmService(std::shared_ptr<XllmServiceImpl> service);
-  ~XllmService();
+  virtual ~XllmService();
 
-  grpc::Status Hello(
-        grpc::ServerContext* context,
-        const proto::Empty* req,
-        proto::Status* resp) override;
+  virtual void Hello(
+      google::protobuf::RpcController* cntl_base,
+      const proto::Empty* req,
+      proto::Status* resp,
+      google::protobuf::Closure* done) override;
 
-  grpc::Status RegisterInstance(
-        grpc::ServerContext* context,
-        const proto::InstanceMetaInfo* req,
-        proto::StatusCode* resp) override;
+  virtual void RegisterInstance(
+      google::protobuf::RpcController* cntl_base,
+      const proto::InstanceMetaInfo* req,
+      proto::StatusCode* resp,
+      google::protobuf::Closure* done) override;
 
-  grpc::Status Heartbeat(
-        grpc::ServerContext* context,
-        const proto::HeartbeatRequest* req,
-        proto::Status* resp) override;
+  virtual void Heartbeat(
+      google::protobuf::RpcController* cntl_base,
+      const proto::HeartbeatRequest* req,
+      proto::Status* resp,
+      google::protobuf::Closure* done) override;
 
  private:
   std::shared_ptr<XllmServiceImpl> xllm_service_;
 };
 
-} // xllm_service
+} // namespace xllm_service

@@ -1,17 +1,29 @@
 #pragma once
-#include <grpcpp/grpcpp.h>
+
+#include <butil/time.h>
+#include <brpc/channel.h>
 #include <string>
 #include <thread>
 
 #include "types.h"
-#include "xllm_service.grpc.pb.h"
+#include "xllm_service.pb.h"
 
 namespace xllm_service {
+
+struct ChannelOptions {
+  std::string protocol = "baidu_std";
+  std::string connection_type = "";
+  std::string load_balancer = "";
+  int timeout_ms = 100;
+  int max_retry = 3;
+  int interval_ms = 1000;
+};
 
 class XllmClient {
  public:
   XllmClient(const std::string& instace_name,
-             const std::string& master_addr);
+             const std::string& master_addr,
+             const ChannelOptions& options);
   ~XllmClient();
 
   ErrorCode register_instance();
@@ -25,8 +37,9 @@ class XllmClient {
   // instance rdma address or other info: ip port
   std::string instance_name_;
   std::string master_addr_;
-  std::unique_ptr<proto::XllmService::Stub> master_stub_;
+  brpc::Channel master_channel_;
+  std::unique_ptr<proto::XllmService_Stub> master_stub_;
   std::unique_ptr<std::thread> heartbeat_thread_;
 };
 
-} // xllm_service
+} // namespace xllm_service

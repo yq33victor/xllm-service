@@ -19,4 +19,4 @@ DisaggPdPolicy::allocate_pd_pairs(/*params here*/) {
   return {};
 }
 
-} // xllm_service
+} // namespace xllm_service

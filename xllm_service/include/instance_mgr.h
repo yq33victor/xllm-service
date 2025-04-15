@@ -42,4 +42,4 @@ class InstanceMgr {
   std::unique_ptr<EtcdClient> etcd_client_;
 };
 
-} // xllm_service
+} // namespace xllm_service

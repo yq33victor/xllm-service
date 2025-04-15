@@ -1,4 +1,4 @@
-#include "utils.h"
+#include "common/utils.h"
 
 #include <glog/logging.h>
 #include <mutex>
@@ -47,5 +47,5 @@ bool is_port_available(int port) {
   return true;
 }
 
-} // utils
-} // xllm_service
+} // namespace utils
+} // namespace xllm_service
