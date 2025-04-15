@@ -2,14 +2,14 @@ include(cc_binary)
 
 cc_binary(
   NAME 
-    xllm_service_test
+    xllm_rpc_service_test
   SRCS 
-    service_test.cpp
+    rpc_service_test.cpp
   DEPS
-    :xllm_service
+    :xllm_rpc_service
     gflags::gflags
     glog::glog
     GTest::gtest_main
 )
 
-add_test(NAME XllmServiceTest COMMAND xllm_service_test)
+add_test(NAME XllmRpcServiceTest COMMAND xllm_rpc_service_test)

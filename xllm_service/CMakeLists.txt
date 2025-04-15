@@ -7,7 +7,7 @@ add_subdirectory(proto)
 
 cc_library(
   NAME
-  xllm_service
+  xllm_rpc_service
   HDRS
     include/common/utils.h
     include/rpc_service/service.h
@@ -27,23 +27,23 @@ cc_library(
     cpprest
     etcd-cpp-api
     glog::glog
-    proto::proto_service
+    proto::proto_rpc_service
     nlohmann_json::nlohmann_json
 )
 
 cc_binary(
   NAME 
-    xllm_serving
+    xllm_rpc_serving
   SRCS 
     src/rpc_service/main.cpp
   DEPS
-    :xllm_service
+    :xllm_rpc_service
     gflags::gflags   
 )
 
 cc_library(
   NAME
-  xllm_client
+  xllm_rpc_client
   HDRS
     include/rpc_service/client.h
     include/types.h
@@ -52,7 +52,7 @@ cc_library(
   DEPS
     brpc-static
     glog::glog
-    proto::proto_service
+    proto::proto_rpc_service
 )
 
 # ---- http service ----
@@ -68,6 +68,7 @@ cc_library(
     src/http_service/service.cpp
     src/common/threadpool.cpp
   DEPS
+    :xllm_rpc_service
     absl::synchronization
     glog::glog
     nlohmann_json::nlohmann_json
@@ -83,6 +84,20 @@ cc_binary(
   DEPS
     :xllm_http_service
     gflags::gflags
+)
+
+# ---- master service ----
+
+cc_binary(
+  NAME
+    xllm_master_serving
+  HDRS
+    include/master.h
+  SRCS
+    src/master.cpp
+  DEPS
+    :xllm_http_service
+    :xllm_rpc_service
 )
 
 add_subdirectory(examples)

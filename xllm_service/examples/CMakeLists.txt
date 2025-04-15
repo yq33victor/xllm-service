@@ -2,31 +2,31 @@ include(cc_binary)
 
 cc_binary(
   NAME 
-    hello_client
+    rpc_hello_client
   SRCS 
-    hello_client.cpp
+    rpc_hello_client.cpp
   DEPS
-    :xllm_service
+    :xllm_rpc_service
     gflags::gflags
     glog::glog
 )
 
 cc_binary(
   NAME 
-    client_test
+    rpc_client_test
   SRCS 
-    client_test.cpp
+    rpc_client_test.cpp
   DEPS
-    :xllm_client
+    :xllm_rpc_client
     gflags::gflags
     glog::glog
 )
 
 cc_binary(
-  NAME 
-    brpc_http_client_test
-  SRCS 
-    brpc_http_client.cpp
+  NAME
+    http_client_test
+  SRCS
+    http_client_test.cpp
   DEPS
     brpc
     gflags::gflags

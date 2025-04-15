@@ -4,12 +4,19 @@
 
 #include "http_service/call_data.h"
 #include "http_service/service.h"
+#include "rpc_service/service.h"
 
 namespace xllm_service {
 
 namespace {
 // TODO: use num_threads params later
 static const size_t NUM_THREADS = 32;
+}
+
+XllmHttpServiceImpl::XllmHttpServiceImpl(std::shared_ptr<XllmRpcServiceImpl> rpc_service)
+    : rpc_service_(rpc_service) {
+  initialized_ = true;
+  thread_pool_ = std::make_unique<ThreadPool>(NUM_THREADS);
 }
 
 XllmHttpServiceImpl::XllmHttpServiceImpl() {

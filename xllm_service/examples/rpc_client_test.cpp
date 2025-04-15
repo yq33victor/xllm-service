@@ -24,7 +24,7 @@ int main(int argc, char* argv[]) {
   xllm_service::ChannelOptions options;
 
   // Create a client instance
-  xllm_service::XllmClient client(FLAGS_client_name, server_address, options);
+  xllm_service::XllmRpcClient client(FLAGS_client_name, server_address, options);
 
   // Register the instance
   auto ret = client.register_instance();

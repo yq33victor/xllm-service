@@ -33,8 +33,8 @@ int main(int argc, char* argv[]) {
 
   // create xllm service
   auto xllm_service_impl =
-      std::make_shared<xllm_service::XllmServiceImpl>(FLAGS_etcd_addr);
-  xllm_service::XllmService service(xllm_service_impl);
+      std::make_shared<xllm_service::XllmRpcServiceImpl>(FLAGS_etcd_addr);
+  xllm_service::XllmRpcService service(xllm_service_impl);
 
   // Initialize brpc server
   std::string server_address = "0.0.0.0:" + std::to_string(FLAGS_port);

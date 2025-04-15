@@ -5,35 +5,35 @@
 
 namespace xllm_service {
 
-XllmServiceImpl::XllmServiceImpl(const std::string& etcd_addr) {
+XllmRpcServiceImpl::XllmRpcServiceImpl(const std::string& etcd_addr) {
   instance_mgr_ = std::make_unique<InstanceMgr>(etcd_addr);
 }
 
-XllmServiceImpl::~XllmServiceImpl() {
+XllmRpcServiceImpl::~XllmRpcServiceImpl() {
 }
 
-ErrorCode XllmServiceImpl::heartbeat(const std::string& instance_name) {
+ErrorCode XllmRpcServiceImpl::heartbeat(const std::string& instance_name) {
   return instance_mgr_->heartbeat(instance_name);
 }
 
-ErrorCode XllmServiceImpl::register_instance(const std::string& instance_name,
-                                             const InstanceMetaInfo& metainfo) {
+ErrorCode XllmRpcServiceImpl::register_instance(const std::string& instance_name,
+                                                const InstanceMetaInfo& metainfo) {
   return instance_mgr_->register_instance(instance_name, metainfo);
 }
 
-ErrorCode XllmServiceImpl::update_instance_metainfo(const std::string& instance_name,
-                                                    const InstanceMetaInfo& metainfo) {
+ErrorCode XllmRpcServiceImpl::update_instance_metainfo(const std::string& instance_name,
+                                                       const InstanceMetaInfo& metainfo) {
   return instance_mgr_->update_instance_metainfo(instance_name, metainfo);
 }
 
-XllmService::XllmService(std::shared_ptr<XllmServiceImpl> service)
+XllmRpcService::XllmRpcService(std::shared_ptr<XllmRpcServiceImpl> service)
     : xllm_service_(service) {
 }
 
-XllmService::~XllmService() {
+XllmRpcService::~XllmRpcService() {
 }
 
-void XllmService::Hello(
+void XllmRpcService::Hello(
     google::protobuf::RpcController* cntl_base,
     const proto::Empty* req,
     proto::Status* resp,
@@ -42,7 +42,7 @@ void XllmService::Hello(
   resp->set_ok(true);
 }
 
-void XllmService::RegisterInstance(
+void XllmRpcService::RegisterInstance(
     google::protobuf::RpcController* cntl_base,
     const proto::InstanceMetaInfo* req,
     proto::StatusCode* resp,
@@ -59,7 +59,7 @@ void XllmService::RegisterInstance(
   resp->set_status_code(ConvertErrorCode::to_int(code));
 }
 
-void XllmService::Heartbeat(
+void XllmRpcService::Heartbeat(
     google::protobuf::RpcController* cntl_base,
     const proto::HeartbeatRequest* req,
     proto::Status* resp,

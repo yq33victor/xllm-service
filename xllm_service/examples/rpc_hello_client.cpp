@@ -6,7 +6,7 @@
 #include <memory>
 #include <string>
 
-#include "xllm_service.pb.h"
+#include "xllm_rpc_service.pb.h"
 
 DEFINE_string(server_address, "localhost:9999", "Grpc server address.");
 DEFINE_string(protocol, "baidu_std", "Protocol type. Defined in src/brpc/options.proto");
@@ -40,7 +40,7 @@ class HelloClient final {
       LOG(ERROR) << "Fail to initialize brpc channel to server " << addr;
       return;
     }
-    master_stub_ = std::make_unique<proto::XllmService_Stub>(&master_channel_);
+    master_stub_ = std::make_unique<proto::XllmRpcService_Stub>(&master_channel_);
   }
 
   void hello() {
@@ -60,7 +60,7 @@ class HelloClient final {
 
  private:
   brpc::Channel master_channel_;
-  std::unique_ptr<proto::XllmService_Stub> master_stub_;
+  std::unique_ptr<proto::XllmRpcService_Stub> master_stub_;
 };
 
 }  // namespace test

@@ -5,10 +5,10 @@
 
 namespace xllm_service::test {
 
-class XllmServiceTest : public ::testing::Test {
+class XllmRpcServiceTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    google::InitGoogleLogging("XllmServiceTest");
+    google::InitGoogleLogging("XllmRpcServiceTest");
   }
 
   void TearDown() override {
@@ -16,9 +16,9 @@ class XllmServiceTest : public ::testing::Test {
   }
 };
 
-TEST_F(XllmServiceTest, RegisterInstance) {
+TEST_F(XllmRpcServiceTest, RegisterInstance) {
   auto xllm_service =
-      std::make_shared<XllmServiceImpl>("");
+      std::make_shared<XllmRpcServiceImpl>("");
   std::string inst_name = "127.0.0.1@nic0";
   InstanceMetaInfo metainfo(inst_name, InstanceType::PREFILL);
   EXPECT_EQ(ErrorCode::OK, xllm_service->register_instance(inst_name, metainfo));
@@ -27,9 +27,9 @@ TEST_F(XllmServiceTest, RegisterInstance) {
   EXPECT_EQ(ErrorCode::INSTANCE_EXISTED, xllm_service->register_instance(inst_name, metainfo));
 }
 
-TEST_F(XllmServiceTest, UpdateInstanceMetainfo) {
+TEST_F(XllmRpcServiceTest, UpdateInstanceMetainfo) {
   auto xllm_service =
-      std::make_shared<XllmServiceImpl>("");
+      std::make_shared<XllmRpcServiceImpl>("");
   std::string inst_name = "127.0.0.1@nic0";
   InstanceMetaInfo metainfo(inst_name, InstanceType::PREFILL);
   EXPECT_EQ(ErrorCode::OK, xllm_service->register_instance(inst_name, metainfo));

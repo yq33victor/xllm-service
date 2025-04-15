@@ -29,7 +29,7 @@ message HeartbeatRequest {
   string name = 1;
 }
 
-service XllmService {
+service XllmRpcService {
   rpc Hello(Empty) returns (Status) {}
   rpc RegisterInstance(InstanceMetaInfo) returns (StatusCode) {}
   rpc Heartbeat(HeartbeatRequest) returns (Status) {}

@@ -7,9 +7,9 @@ namespace xllm_service {
 // magic number, TODO: move to config file or env var
 static constexpr int kHeartbeatInterval = 3; // in seconds
 
-XllmClient::XllmClient(const std::string& instace_name,
-                       const std::string& master_addr,
-                       const ChannelOptions& options)
+XllmRpcClient::XllmRpcClient(const std::string& instace_name,
+                             const std::string& master_addr,
+                             const ChannelOptions& options)
     : instance_name_(instace_name), master_addr_(master_addr) {
   brpc::ChannelOptions chan_options;
   chan_options.protocol = options.protocol;
@@ -20,13 +20,13 @@ XllmClient::XllmClient(const std::string& instace_name,
       LOG(ERROR) << "Fail to initialize brpc channel to server " << master_addr_;
       return;
   }
-  master_stub_ = std::make_unique<proto::XllmService_Stub>(&master_channel_);
+  master_stub_ = std::make_unique<proto::XllmRpcService_Stub>(&master_channel_);
 
   // heartbeat thread
-  heartbeat_thread_ = std::make_unique<std::thread>(&XllmClient::heartbeat, this);
+  heartbeat_thread_ = std::make_unique<std::thread>(&XllmRpcClient::heartbeat, this);
 }
 
-XllmClient::~XllmClient() {
+XllmRpcClient::~XllmRpcClient() {
   exited_ = true;
   if (heartbeat_thread_) {
     heartbeat_thread_->join();
@@ -34,7 +34,7 @@ XllmClient::~XllmClient() {
 }
 
 // TODO: send metainfo/metrics to master ? 
-void XllmClient::heartbeat() {
+void XllmRpcClient::heartbeat() {
   while (!exited_) {
     std::this_thread::sleep_for(std::chrono::seconds(kHeartbeatInterval));
     if (!register_inst_done_) continue;
@@ -56,13 +56,13 @@ void XllmClient::heartbeat() {
   }
 }
 
-ErrorCode XllmClient::register_instance() {
+ErrorCode XllmRpcClient::register_instance() {
   InstanceMetaInfo metainfo;
   metainfo.name = instance_name_;
   return register_instance(metainfo);
 }
 
-ErrorCode XllmClient::register_instance(const InstanceMetaInfo& metainfo) {
+ErrorCode XllmRpcClient::register_instance(const InstanceMetaInfo& metainfo) {
   brpc::Controller cntl;
   proto::InstanceMetaInfo req;
   req.set_name(metainfo.name);

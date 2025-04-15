@@ -1,14 +1,14 @@
 #pragma once
 
 #include "instance_mgr.h"
-#include "xllm_service.pb.h"
+#include "xllm_rpc_service.pb.h"
 
 namespace xllm_service {
 
-class XllmServiceImpl final {
+class XllmRpcServiceImpl final {
  public:
-  XllmServiceImpl(const std::string& etcd_addr);
-  ~XllmServiceImpl();
+  XllmRpcServiceImpl(const std::string& etcd_addr);
+  ~XllmRpcServiceImpl();
   ErrorCode heartbeat(const std::string& instance_name);
 
   ErrorCode register_instance(const std::string& instance_name,
@@ -20,11 +20,11 @@ class XllmServiceImpl final {
   std::unique_ptr<InstanceMgr> instance_mgr_;
 };
 
-// parse proto data and call XllmService
-class XllmService : public proto::XllmService {
+// parse proto data and call XllmRpcService
+class XllmRpcService : public proto::XllmRpcService {
  public:
-  explicit XllmService(std::shared_ptr<XllmServiceImpl> service);
-  virtual ~XllmService();
+  explicit XllmRpcService(std::shared_ptr<XllmRpcServiceImpl> service);
+  virtual ~XllmRpcService();
 
   virtual void Hello(
       google::protobuf::RpcController* cntl_base,
@@ -45,7 +45,7 @@ class XllmService : public proto::XllmService {
       google::protobuf::Closure* done) override;
 
  private:
-  std::shared_ptr<XllmServiceImpl> xllm_service_;
+  std::shared_ptr<XllmRpcServiceImpl> xllm_service_;
 };
 
 } // namespace xllm_service

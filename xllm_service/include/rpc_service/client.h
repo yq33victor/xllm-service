@@ -6,7 +6,7 @@
 #include <thread>
 
 #include "types.h"
-#include "xllm_service.pb.h"
+#include "xllm_rpc_service.pb.h"
 
 namespace xllm_service {
 
@@ -19,12 +19,12 @@ struct ChannelOptions {
   int interval_ms = 1000;
 };
 
-class XllmClient {
+class XllmRpcClient {
  public:
-  XllmClient(const std::string& instace_name,
-             const std::string& master_addr,
-             const ChannelOptions& options);
-  ~XllmClient();
+  XllmRpcClient(const std::string& instace_name,
+                const std::string& master_addr,
+                const ChannelOptions& options);
+  ~XllmRpcClient();
 
   ErrorCode register_instance();
   ErrorCode register_instance(const InstanceMetaInfo& metainfo);
@@ -38,7 +38,7 @@ class XllmClient {
   std::string instance_name_;
   std::string master_addr_;
   brpc::Channel master_channel_;
-  std::unique_ptr<proto::XllmService_Stub> master_stub_;
+  std::unique_ptr<proto::XllmRpcService_Stub> master_stub_;
   std::unique_ptr<std::thread> heartbeat_thread_;
 };
 

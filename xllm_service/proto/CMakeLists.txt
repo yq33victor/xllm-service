@@ -3,9 +3,9 @@ include(proto_library)
 
 proto_library(
   NAME
-    proto_service
+    proto_rpc_service
   SRCS
-    xllm_service.proto
+    xllm_rpc_service.proto
 )
 
 proto_library(

@@ -9,9 +9,12 @@
 
 namespace xllm_service {
 
+class XllmRpcServiceImpl;
+
 class XllmHttpServiceImpl : public proto::XllmHttpService {
  public:
-  explicit XllmHttpServiceImpl();
+  XllmHttpServiceImpl();
+  XllmHttpServiceImpl(std::shared_ptr<XllmRpcServiceImpl> rpc_service);
   ~XllmHttpServiceImpl();
 
   void Hello(::google::protobuf::RpcController* controller,
@@ -29,6 +32,8 @@ class XllmHttpServiceImpl : public proto::XllmHttpService {
 
  private:
   bool initialized_ = false;
+
+  std::shared_ptr<XllmRpcServiceImpl> rpc_service_;
 
   // uri -> channel
   // e.g. 127.0.0.1:9999/v1/completions -> channel1
