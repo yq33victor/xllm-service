@@ -11,6 +11,7 @@ DEFINE_int32(idle_timeout_s, -1,
              "Connection will be closed if there is no read/write operations during the last `idle_timeout_s`");
 DEFINE_int32(num_threads, 32, "Number of threads to process requests");
 DEFINE_int32(max_concurrency, 128, "Limit number of requests processed in parallel");
+DEFINE_string(test_instance_addr, "0.0.0.0:9999", "Xllm instance listen addr for testing.");
 
 int main(int argc, char** argv) {
   // Initialize gflags
@@ -22,7 +23,10 @@ int main(int argc, char** argv) {
 
   LOG(INFO) << "Starting xllm http service, port: " << FLAGS_port;
 
-  xllm_service::XllmHttpServiceImpl service_impl;
+  xllm_service::HttpServiceConfig config;
+  config.num_threads = FLAGS_num_threads;
+  config.test_instance_addr = FLAGS_test_instance_addr;
+  xllm_service::XllmHttpServiceImpl service_impl(config);
 
   // register http methods here
   brpc::Server server;

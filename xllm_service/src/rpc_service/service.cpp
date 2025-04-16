@@ -1,12 +1,12 @@
 #include <brpc/closure_guard.h>
 
+#include "common/types.h"
 #include "rpc_service/service.h"
-#include "types.h"
 
 namespace xllm_service {
 
-XllmRpcServiceImpl::XllmRpcServiceImpl(const std::string& etcd_addr) {
-  instance_mgr_ = std::make_unique<InstanceMgr>(etcd_addr);
+XllmRpcServiceImpl::XllmRpcServiceImpl(const RpcServiceConfig& config) {
+  instance_mgr_ = std::make_unique<InstanceMgr>(config);
 }
 
 XllmRpcServiceImpl::~XllmRpcServiceImpl() {
@@ -25,6 +25,11 @@ ErrorCode XllmRpcServiceImpl::update_instance_metainfo(const std::string& instan
                                                        const InstanceMetaInfo& metainfo) {
   return instance_mgr_->update_instance_metainfo(instance_name, metainfo);
 }
+
+InstancesPair XllmRpcServiceImpl::select_instances_pair() {
+  return instance_mgr_->select_instances_pair();
+}
+
 
 XllmRpcService::XllmRpcService(std::shared_ptr<XllmRpcServiceImpl> service)
     : xllm_service_(service) {

@@ -7,6 +7,24 @@
 
 namespace xllm_service {
 
+struct HttpServiceConfig {
+  int num_threads = 16;
+  std::string test_instance_addr = "";
+};
+
+struct RpcServiceConfig {
+  std::string etcd_addr = "";
+  std::string disagg_pd_policy = "";
+  int detect_disconnected_instance_interval = 15; // seconds
+};
+
+// instances pair for prefill and decode in disagg PD mode.
+struct InstancesPair {
+  std::string prefill_instance_http_addr = "";
+  // empty means no decode instance, only prefill instance is available
+  std::string decode_instance_http_addr = "";
+};
+
 enum class ErrorCode : int32_t {
   OK = 0,
   INTERNAL_ERROR = 1,

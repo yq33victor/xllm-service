@@ -7,7 +7,7 @@ namespace xllm_service {
 
 class XllmRpcServiceImpl final {
  public:
-  XllmRpcServiceImpl(const std::string& etcd_addr);
+  XllmRpcServiceImpl(const RpcServiceConfig& config);
   ~XllmRpcServiceImpl();
   ErrorCode heartbeat(const std::string& instance_name);
 
@@ -15,6 +15,12 @@ class XllmRpcServiceImpl final {
                               const InstanceMetaInfo& metainfo);
   ErrorCode update_instance_metainfo(const std::string& instance_name,
                                      const InstanceMetaInfo& metainfo);
+
+  // methods for master
+
+  // select instances(prefill/decode/default etc.) to handle request
+  // according the disagg pd policy (or some other policies.).
+  InstancesPair select_instances_pair();
 
  private:
   std::unique_ptr<InstanceMgr> instance_mgr_;

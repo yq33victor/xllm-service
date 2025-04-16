@@ -2,9 +2,9 @@
 #include <chrono>
 #include <glog/logging.h>
 
+#include "common/types.h"
 #include "common/utils.h"
 #include "instance_mgr.h"
-#include "types.h"
 
 #include <iostream>
 namespace xllm_service {
@@ -18,22 +18,33 @@ static std::unordered_map<InstanceType, std::string> ETCD_KEYS_PREFIX_MAP =
   {InstanceType::DECODE, "XLLM:DECODE:"},
 };
 static std::string ETCD_ALL_KEYS_PREFIX = "XLLM:";
+static std::string DEFAULT_DISAGG_PD_POLICY = "RR";
 
-InstanceMgr::InstanceMgr(const std::string& etcd_addr) {
-  if (etcd_addr.empty()) {
+InstanceMgr::InstanceMgr(const RpcServiceConfig& config) : config_(config) {
+  if (config.etcd_addr.empty()) {
     LOG(INFO) << "Disable etcd meta server";
     use_etcd_ = false;
   } else {
-    LOG(INFO) << "Connect to etcd meta server: " << etcd_addr;
+    LOG(INFO) << "Connect to etcd meta server: " << config.etcd_addr;
     use_etcd_ = true;
-    etcd_client_ = std::make_unique<EtcdClient>(etcd_addr);
+    etcd_client_ = std::make_unique<EtcdClient>(config.etcd_addr);
   }
 
   internal_init();
 }
 
 void InstanceMgr::internal_init() {
-  disagg_pd_policy_ = std::make_unique<DisaggPdPolicy>(&instances_);
+  std::string pd_policy = config_.disagg_pd_policy;
+  if (config_.disagg_pd_policy.empty()) {
+    LOG(WARNING) << "Not specify diasgg pd policy, use `RR` policy as default.";
+    pd_policy = DEFAULT_DISAGG_PD_POLICY;
+  }
+  if (pd_policy == "RR") {
+    disagg_pd_policy_ = std::make_unique<RoundRobinDisaggPdPolicy>();
+  } else {
+    LOG(FATAL) << "Not supported diasgg pd policy: " << pd_policy;
+    return;
+  }
 
   heartbeat_thread_ =
       std::make_unique<std::thread>(&InstanceMgr::detect_disconnected_instances, this);
@@ -76,6 +87,7 @@ void InstanceMgr::detect_disconnected_instances() {
       // detele instance metainfo from etcd
       delete_persistence_metainfo(disconnected_instances_name);
       for (const auto& name : disconnected_instances_name) {
+        disagg_pd_policy_->remove_instance(name, instances_[name].type);
         instances_.erase(name);
       }
     }
@@ -88,12 +100,14 @@ ErrorCode InstanceMgr::register_instance(const std::string& instance_name) {
     LOG(WARNING) << "Register instance, instance_name: " << instance_name;
   }
   if (instances_.find(instance_name) != instances_.end()) {
+    //update_instance_timestamp(instance_name);
     LOG(ERROR) << "Instance is already registered, instance_name: " << instance_name;
     return ErrorCode::INSTANCE_EXISTED; 
   }
 
   InstanceMetaInfo default_info(instance_name);
   instances_[instance_name] = default_info;
+  disagg_pd_policy_->insert_instance(instance_name, &(instances_[instance_name]));
   // save instance metainfo to etcd
   save_persistence_metainfo(default_info);
   return ErrorCode::OK;
@@ -106,11 +120,13 @@ ErrorCode InstanceMgr::register_instance(const std::string& instance_name,
     LOG(WARNING) << "Register instance, instance_name: " << instance_name;
   }
   if (instances_.find(instance_name) != instances_.end()) {
+    //update_instance_timestamp(instance_name);
     LOG(ERROR) << "Instance is already registered, instance_name: " << instance_name;
     return ErrorCode::INSTANCE_EXISTED;
   }
 
   instances_[instance_name] = metainfo;
+  disagg_pd_policy_->insert_instance(instance_name, &(instances_[instance_name]));
   // save instance metainfo to etcd
   save_persistence_metainfo(metainfo);
   return ErrorCode::OK;
@@ -128,6 +144,8 @@ ErrorCode InstanceMgr::update_instance_metainfo(const std::string& instance_name
   }
 
   instances_[instance_name] = metainfo;
+  update_instance_timestamp(instance_name);
+  disagg_pd_policy_->update_instance(instance_name, &(instances_[instance_name]));
   return ErrorCode::OK;
 }
 
@@ -197,12 +215,20 @@ ErrorCode InstanceMgr::heartbeat(const std::string& instance_name) {
     return ErrorCode::INSTANCE_NOT_EXISTED;
   }
 
+  update_instance_timestamp(instance_name);
+
+  return ErrorCode::OK;
+}
+
+void InstanceMgr::update_instance_timestamp(const std::string& inst_name) {
   auto now = std::chrono::system_clock::now();
   auto timestamp_ms =
       std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
-  instances_[instance_name].latest_timestamp = timestamp_ms;
+  instances_[inst_name].latest_timestamp = timestamp_ms;
+}
 
-  return ErrorCode::OK;
+InstancesPair InstanceMgr::select_instances_pair() {
+  return disagg_pd_policy_->select_instances_pair();
 }
 
 } // namespace xllm_service

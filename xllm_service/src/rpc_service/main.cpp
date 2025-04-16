@@ -14,6 +14,9 @@ DEFINE_int32(idle_timeout_s, -1, "Connection will be closed if there is no "
 DEFINE_int32(num_threads, 32, "Maximum number of threads to use");
 DEFINE_int32(max_concurrency, 128, "Limit number of requests processed in parallel");
 DEFINE_string(etcd_addr, "", "etcd adderss for save instance meta info");
+DEFINE_string(disagg_pd_policy, "RR", "Disaggregated prefill-decode policy.");
+DEFINE_int32(detect_disconnected_instance_interval, 15,
+             "The interval that server detect the disconnected instance.");
 
 int main(int argc, char* argv[]) {
   // Initialize gflags
@@ -31,9 +34,14 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
+  xllm_service::RpcServiceConfig config;
+  config.etcd_addr = FLAGS_etcd_addr;
+  config.disagg_pd_policy = FLAGS_disagg_pd_policy;
+  config.detect_disconnected_instance_interval =
+      FLAGS_detect_disconnected_instance_interval;
   // create xllm service
   auto xllm_service_impl =
-      std::make_shared<xllm_service::XllmRpcServiceImpl>(FLAGS_etcd_addr);
+      std::make_shared<xllm_service::XllmRpcServiceImpl>(config);
   xllm_service::XllmRpcService service(xllm_service_impl);
 
   // Initialize brpc server

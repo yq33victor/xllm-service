@@ -5,7 +5,7 @@
 #include <string>
 #include <thread>
 
-#include "types.h"
+#include "common/types.h"
 #include "xllm_rpc_service.pb.h"
 
 namespace xllm_service {

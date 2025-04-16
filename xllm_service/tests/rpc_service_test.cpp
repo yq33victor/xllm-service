@@ -17,8 +17,9 @@ class XllmRpcServiceTest : public ::testing::Test {
 };
 
 TEST_F(XllmRpcServiceTest, RegisterInstance) {
+  RpcServiceConfig config;
   auto xllm_service =
-      std::make_shared<XllmRpcServiceImpl>("");
+      std::make_shared<XllmRpcServiceImpl>(config);
   std::string inst_name = "127.0.0.1@nic0";
   InstanceMetaInfo metainfo(inst_name, InstanceType::PREFILL);
   EXPECT_EQ(ErrorCode::OK, xllm_service->register_instance(inst_name, metainfo));
@@ -28,8 +29,9 @@ TEST_F(XllmRpcServiceTest, RegisterInstance) {
 }
 
 TEST_F(XllmRpcServiceTest, UpdateInstanceMetainfo) {
+  RpcServiceConfig config;
   auto xllm_service =
-      std::make_shared<XllmRpcServiceImpl>("");
+      std::make_shared<XllmRpcServiceImpl>(config);
   std::string inst_name = "127.0.0.1@nic0";
   InstanceMetaInfo metainfo(inst_name, InstanceType::PREFILL);
   EXPECT_EQ(ErrorCode::OK, xllm_service->register_instance(inst_name, metainfo));

@@ -3,7 +3,7 @@
 #include <etcd/SyncClient.hpp>
 #include <string>
 
-#include "types.h"
+#include "common/types.h"
 
 namespace xllm_service {
 

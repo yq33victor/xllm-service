@@ -1,5 +1,6 @@
 #include <csignal>
 
+#include "common/types.h"
 #include "common/utils.h"
 #include "master.h"
 
@@ -10,13 +11,20 @@ Master::Master(const ServerOptions& server_options)
   if (server_options.etcd_addr.empty()) {
     LOG(WARNING) << "etcd_addr is empty, rpc service will not save metadata to etcd.";
   }
+  RpcServiceConfig rpc_config;
+  rpc_config.etcd_addr = server_options.etcd_addr;
+  rpc_config.disagg_pd_policy = server_options.disagg_pd_policy;
+  rpc_config.detect_disconnected_instance_interval =
+      server_options.detect_disconnected_instance_interval;
   rpc_service_impl_ =
-      std::make_shared<xllm_service::XllmRpcServiceImpl>(server_options.etcd_addr);
+      std::make_shared<xllm_service::XllmRpcServiceImpl>(rpc_config);
   rpc_service_ =
       std::make_unique<xllm_service::XllmRpcService>(rpc_service_impl_);
 
+  HttpServiceConfig http_config;
+  http_config.num_threads = server_options.http_num_threads;
   http_service_ =
-      std::make_unique<xllm_service::XllmHttpServiceImpl>(rpc_service_impl_);
+      std::make_unique<xllm_service::XllmHttpServiceImpl>(rpc_service_impl_, http_config);
 }
 
 Master::~Master() {
@@ -140,7 +148,10 @@ DEFINE_int32(rpc_server_idle_timeout_s, -1, "Connection will be closed if there 
              "read/write operations during the last `idle_timeout_s'");
 DEFINE_int32(rpc_server_num_threads, 32, "Maximum number of threads to use");
 DEFINE_int32(rpc_server_max_concurrency, 128, "Limit number of requests processed in parallel");
-DEFINE_string(etcd_addr, "", "etcd adderss for save instance meta info");
+DEFINE_string(etcd_addr, "0.0.0.0:2379", "etcd adderss for save instance meta info");
+DEFINE_string(disagg_pd_policy, "RR", "Disaggregated prefill-decode policy.");
+DEFINE_int32(detect_disconnected_instance_interval, 15,
+             "The interval that server detect the disconnected instance.");
 
 static std::atomic<uint32_t> g_signal_received{0};
 void shutdown_handler(int signal) {
@@ -182,6 +193,10 @@ int main(int argc, char* argv[]) {
   server_options.rpc_num_threads = FLAGS_rpc_server_num_threads;
   server_options.rpc_max_concurrency = FLAGS_rpc_server_max_concurrency;
   server_options.etcd_addr = FLAGS_etcd_addr;
+  server_options.disagg_pd_policy = FLAGS_disagg_pd_policy;
+  server_options.detect_disconnected_instance_interval =
+      FLAGS_detect_disconnected_instance_interval;
+
   xllm_service::Master master(server_options);
 
   if (!master.start()) {

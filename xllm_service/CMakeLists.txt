@@ -9,12 +9,12 @@ cc_library(
   NAME
   xllm_rpc_service
   HDRS
+    include/common/types.h
     include/common/utils.h
     include/rpc_service/service.h
     include/instance_mgr.h
     include/disagg_pd_policy.h
     include/etcd_client.h
-    include/types.h
   SRCS
     src/common/utils.cpp
     src/rpc_service/service.cpp
@@ -45,8 +45,8 @@ cc_library(
   NAME
   xllm_rpc_client
   HDRS
+    include/common/types.h
     include/rpc_service/client.h
-    include/types.h
   SRCS
     src/rpc_service/client.cpp
   DEPS
@@ -61,12 +61,13 @@ cc_library(
   NAME
   xllm_http_service
   HDRS
-    include/http_service/service.h
+    include/common/closure_guard.h
     include/common/concurrent_queue.h
     include/common/threadpool.h
+    include/http_service/service.h
   SRCS
-    src/http_service/service.cpp
     src/common/threadpool.cpp
+    src/http_service/service.cpp
   DEPS
     :xllm_rpc_service
     absl::synchronization

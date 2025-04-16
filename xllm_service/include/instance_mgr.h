@@ -5,15 +5,15 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include "common/types.h"
 #include "disagg_pd_policy.h"
 #include "etcd_client.h"
-#include "types.h"
 
 namespace xllm_service {
 
 class InstanceMgr {
  public:
-  explicit InstanceMgr(const std::string& etcd_addr);
+  explicit InstanceMgr(const RpcServiceConfig& config);
   ~InstanceMgr();
   ErrorCode heartbeat(const std::string& instance_name);
 
@@ -22,6 +22,11 @@ class InstanceMgr {
                               const InstanceMetaInfo& metainfo);
   ErrorCode update_instance_metainfo(const std::string& instance_name,
                                      const InstanceMetaInfo& metainfo);
+
+  // select instances(prefill/decode/default etc.) to handle request
+  // according the disagg pd policy (or some other policies.).
+  InstancesPair select_instances_pair();
+
  private:
   void internal_init();
   // save instance metainfo to etcd
@@ -29,8 +34,10 @@ class InstanceMgr {
   // delete instance metainfo from etcd
   void delete_persistence_metainfo(const std::vector<std::string>& instance_names);
   void detect_disconnected_instances();
+  void update_instance_timestamp(const std::string& inst_name);
 
  private:
+  RpcServiceConfig config_;
   bool exited_ = false;
   std::mutex inst_mutex_;
   std::unordered_map<std::string, InstanceMetaInfo> instances_;

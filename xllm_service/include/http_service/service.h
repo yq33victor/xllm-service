@@ -4,6 +4,7 @@
 #include <iostream>
 #include <mutex>
 
+#include "common/types.h"
 #include "common/threadpool.h"
 #include "xllm_http_service.pb.h"
 
@@ -13,8 +14,9 @@ class XllmRpcServiceImpl;
 
 class XllmHttpServiceImpl : public proto::XllmHttpService {
  public:
-  XllmHttpServiceImpl();
-  XllmHttpServiceImpl(std::shared_ptr<XllmRpcServiceImpl> rpc_service);
+  XllmHttpServiceImpl(const HttpServiceConfig& config);
+  XllmHttpServiceImpl(std::shared_ptr<XllmRpcServiceImpl> rpc_service,
+                      const HttpServiceConfig& config);
   ~XllmHttpServiceImpl();
 
   void Hello(::google::protobuf::RpcController* controller,
@@ -32,6 +34,7 @@ class XllmHttpServiceImpl : public proto::XllmHttpService {
 
  private:
   bool initialized_ = false;
+  HttpServiceConfig config_;
 
   std::shared_ptr<XllmRpcServiceImpl> rpc_service_;
 

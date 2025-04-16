@@ -2,26 +2,24 @@
 #include <glog/logging.h>
 #include <nlohmann/json.hpp>
 
+#include "common/closure_guard.h"
 #include "http_service/call_data.h"
 #include "http_service/service.h"
 #include "rpc_service/service.h"
 
 namespace xllm_service {
 
-namespace {
-// TODO: use num_threads params later
-static const size_t NUM_THREADS = 32;
+XllmHttpServiceImpl::XllmHttpServiceImpl(std::shared_ptr<XllmRpcServiceImpl> rpc_service,
+                                         const HttpServiceConfig& config)
+    : config_(config), rpc_service_(rpc_service) {
+  initialized_ = true;
+  thread_pool_ = std::make_unique<ThreadPool>(config_.num_threads);
 }
 
-XllmHttpServiceImpl::XllmHttpServiceImpl(std::shared_ptr<XllmRpcServiceImpl> rpc_service)
-    : rpc_service_(rpc_service) {
+XllmHttpServiceImpl::XllmHttpServiceImpl(const HttpServiceConfig& config)
+    : config_(config) {
   initialized_ = true;
-  thread_pool_ = std::make_unique<ThreadPool>(NUM_THREADS);
-}
-
-XllmHttpServiceImpl::XllmHttpServiceImpl() {
-  initialized_ = true;
-  thread_pool_ = std::make_unique<ThreadPool>(NUM_THREADS);
+  thread_pool_ = std::make_unique<ThreadPool>(config_.num_threads);
 }
 
 XllmHttpServiceImpl::~XllmHttpServiceImpl() {
@@ -66,12 +64,15 @@ void XllmHttpServiceImpl::Completions(::google::protobuf::RpcController* control
                                       proto::HttpResponse* response,
                                       ::google::protobuf::Closure* done) {
   assert(initialized_);
+  ClosureGuard done_guard(done);
+  auto cntl = reinterpret_cast<brpc::Controller*>(controller);
+
   if (!request || !response || !controller) {
     LOG(ERROR) << "brpc request | respose | controller is null";
+    cntl->SetFailed("brpc request | respose | controller is null");
     return;
   }
 
-  auto cntl = reinterpret_cast<brpc::Controller*>(controller);
   std::string req_attachment = cntl->request_attachment().to_string();
   nlohmann::json json_value = nlohmann::json::parse(req_attachment);
   bool stream = false;
@@ -79,20 +80,35 @@ void XllmHttpServiceImpl::Completions(::google::protobuf::RpcController* control
     try {
       stream = json_value.at("stream").get<bool>();
     } catch  (const std::exception& e) {
-      // pass
-    }
-    try {
-      stream = json_value.at("stream").get<int>() == 1;
-    } catch  (const std::exception& e) {
-      LOG(ERROR) << "Error stream field in request, required bool or int value.";
+      LOG(ERROR) << "Invalid args(stream) type in request, required bool type value.";
+      cntl->SetFailed("Invalid args(stream) type in request, required bool type value.");
       return;
     }
   }
-  auto call_data = std::make_shared<StreamCallDataBrpc>(cntl, stream, done);
+  auto call_data = std::make_shared<StreamCallDataBrpc>(cntl, stream, done_guard.release());
 
   // redistribute the request to the correct P/D instance
   // TODO: redistribute policy to select the instance
-  std::string target_instance_addr = "127.0.0.1:9999";
+  std::string target_instance_addr;
+  if (!rpc_service_) {
+    // for testing
+    if (config_.test_instance_addr.empty()) {
+      LOG(ERROR) << "Rpc service is not start.";
+      call_data->finish_with_error("Rpc service is not start.");
+      return;
+    }
+    target_instance_addr = config_.test_instance_addr;
+  } else {
+    InstancesPair instances_pair = rpc_service_->select_instances_pair();
+    if (instances_pair.prefill_instance_http_addr.empty()) {
+      LOG(ERROR) << "No prefill instance available.";
+      call_data->finish_with_error("No prefill instance available.");
+      return;
+    }
+    target_instance_addr = instances_pair.prefill_instance_http_addr;
+    // TODO: add instances_pair.decode_instance_http_addr to request ?
+  }
+
   std::string target_uri = target_instance_addr + "/v1/completions";
   if (cached_channels_.find(target_uri) == cached_channels_.end()) {
     create_channel(target_uri);

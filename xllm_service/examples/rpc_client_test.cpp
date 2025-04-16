@@ -4,7 +4,7 @@
 #include "rpc_service/client.h"
 
 DEFINE_string(server_address, "localhost:9999", "Grpc server address.");
-DEFINE_string(client_name, "127.0.0.1@nic0", "client name.");
+DEFINE_string(client_name, "127.0.0.1@9999", "client name.");
 DEFINE_string(protocol, "baidu_std", "Protocol type. Defined in src/brpc/options.proto");
 DEFINE_string(connection_type, "", "Connection type. Available values: single, pooled, short");
 DEFINE_string(server, "0.0.0.0:8000", "IP Address of server");
