@@ -136,7 +136,6 @@ void XllmHttpServiceImpl::post_serving(const std::string& serving_method,
   // TODO: redistribute policy to select the instance
   std::string target_uri = get_redirect_uri(call_data);
   if (target_uri.empty()) return;
-  target_uri += serving_method;
   if (cached_channels_.find(target_uri) == cached_channels_.end()) {
     if(!create_channel(target_uri)) return;
   }
@@ -144,6 +143,7 @@ void XllmHttpServiceImpl::post_serving(const std::string& serving_method,
   // async redistribute the request and wait the response
   // TODO: optimize the thread pool to async mode.
   auto channel_ptr = cached_channels_[target_uri];
+  target_uri += serving_method;
   thread_pool_->schedule([stream, req_attachment, call_data, cntl, channel_ptr, target_uri]() {
     brpc::Controller redirect_cntl;
     redirect_cntl.http_request().uri() = target_uri.c_str();
@@ -192,12 +192,12 @@ void XllmHttpServiceImpl::get_serving(const std::string& serving_method,
   auto call_data = std::make_shared<StreamCallDataBrpc>(cntl, false, done_guard.release());
   std::string target_uri = get_redirect_uri(call_data, true/*only_prefill*/);
   if (target_uri.empty()) return;
-  target_uri += serving_method;
   if (cached_channels_.find(target_uri) == cached_channels_.end()) {
     if(!create_channel(target_uri)) return;
   }
 
   auto channel_ptr = cached_channels_[target_uri];
+  target_uri += serving_method;
   thread_pool_->schedule([/*req_attachment, */call_data, cntl, channel_ptr, target_uri]() {
     brpc::Controller redirect_cntl;
     redirect_cntl.http_request().uri() = target_uri.c_str();
