@@ -60,8 +60,13 @@ void Master::stop() {
 bool Master::start_http_server() {
   if (http_server_.AddService(http_service_.get(),
                               brpc::SERVER_DOESNT_OWN_SERVICE,
+                              // for testing
                               "/hello => Hello,"
-                              "/v1/completions => Completions,") != 0) {
+                              "/v1/completions => Completions,"
+                              "/v1/chat/completions => ChatCompletions,"
+                              "/v1/embeddings => Embeddings,"
+                              "/v1/models => Models,"
+                              "/metrics => Metrics,") != 0) {
     LOG(FATAL) << "Fail to add http service";
     return false;
   }

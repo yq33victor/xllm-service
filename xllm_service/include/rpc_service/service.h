@@ -20,7 +20,7 @@ class XllmRpcServiceImpl final {
 
   // select instances(prefill/decode/default etc.) to handle request
   // according the disagg pd policy (or some other policies.).
-  InstancesPair select_instances_pair();
+  InstancesPair select_instances_pair(bool only_prefill = false);
 
  private:
   std::unique_ptr<InstanceMgr> instance_mgr_;

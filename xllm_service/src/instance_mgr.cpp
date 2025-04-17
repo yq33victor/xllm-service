@@ -227,8 +227,8 @@ void InstanceMgr::update_instance_timestamp(const std::string& inst_name) {
   instances_[inst_name].latest_timestamp = timestamp_ms;
 }
 
-InstancesPair InstanceMgr::select_instances_pair() {
-  return disagg_pd_policy_->select_instances_pair();
+InstancesPair InstanceMgr::select_instances_pair(bool only_prefill) {
+  return disagg_pd_policy_->select_instances_pair(only_prefill);
 }
 
 } // namespace xllm_service

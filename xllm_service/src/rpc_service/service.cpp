@@ -26,8 +26,8 @@ ErrorCode XllmRpcServiceImpl::update_instance_metainfo(const std::string& instan
   return instance_mgr_->update_instance_metainfo(instance_name, metainfo);
 }
 
-InstancesPair XllmRpcServiceImpl::select_instances_pair() {
-  return instance_mgr_->select_instances_pair();
+InstancesPair XllmRpcServiceImpl::select_instances_pair(bool only_prefill) {
+  return instance_mgr_->select_instances_pair(only_prefill);
 }
 
 

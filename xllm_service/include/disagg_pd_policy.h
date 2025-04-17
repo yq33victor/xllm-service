@@ -26,7 +26,7 @@ class DisaggPdPolicy {
 
   // select instances(prefill/decode/default etc.) to handle request
   // according the disagg pd policy.
-  virtual InstancesPair select_instances_pair() = 0;
+  virtual InstancesPair select_instances_pair(bool only_prefill = false) = 0;
 
   void insert_instance(const std::string& name, InstanceMetaInfo* info);
   void update_instance(const std::string& name, InstanceMetaInfo* info);
@@ -51,7 +51,7 @@ class RoundRobinDisaggPdPolicy : public DisaggPdPolicy {
       reallocate_instances_type(/*params here*/) override;
   virtual std::unordered_map<std::string, std::vector<std::string>>
       allocate_pd_pairs(/*params here*/) override;
-  virtual InstancesPair select_instances_pair() override;
+  virtual InstancesPair select_instances_pair(bool only_prefill = false) override;
 
  private:
   int next_prefill_idx_ = 0;

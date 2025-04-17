@@ -76,8 +76,8 @@ class StreamCallDataBrpc : public CallData {
   bool proceed(bool rpc_ok) override { return true; }
 
   // For non stream response
-  bool write_and_finish(const std::string& attachment) {
-    controller_->response_attachment().append(attachment);
+  bool write_and_finish(const std::string& attachment/*json string*/) {
+    controller_->response_attachment() = attachment;
     return true;
   }
 

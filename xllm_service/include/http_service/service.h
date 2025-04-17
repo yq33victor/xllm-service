@@ -6,6 +6,7 @@
 
 #include "common/types.h"
 #include "common/threadpool.h"
+#include "http_service/call_data.h"
 #include "xllm_http_service.pb.h"
 
 namespace xllm_service {
@@ -29,8 +30,41 @@ class XllmHttpServiceImpl : public proto::XllmHttpService {
                    proto::HttpResponse* response,
                    ::google::protobuf::Closure* done) override;
 
+  void ChatCompletions(::google::protobuf::RpcController* controller,
+                       const proto::HttpRequest* request,
+                       proto::HttpResponse* response,
+                       ::google::protobuf::Closure* done) override;
+
+  void Embeddings(::google::protobuf::RpcController* controller,
+                  const proto::HttpRequest* request,
+                  proto::HttpResponse* response,
+                  ::google::protobuf::Closure* done) override;
+
+  void Models(::google::protobuf::RpcController* controller,
+              const proto::HttpRequest* request,
+              proto::HttpResponse* response,
+              ::google::protobuf::Closure* done) override;
+
+  void Metrics(::google::protobuf::RpcController* controller,
+               const proto::HttpRequest* request,
+               proto::HttpResponse* response,
+               ::google::protobuf::Closure* done) override;
+
  private:
-  void create_channel(const std::string& target_uri);
+  bool create_channel(const std::string& target_uri);
+  // only prefill is true means only prefill instance is returned
+  std::string get_redirect_uri(std::shared_ptr<StreamCallDataBrpc> call_data,
+                               bool only_prefill = false);
+  void post_serving(const std::string& serving_method,
+                    ::google::protobuf::RpcController* controller,
+                    const proto::HttpRequest* request,
+                    proto::HttpResponse* response,
+                    ::google::protobuf::Closure* done);
+  void get_serving(const std::string& serving_method,
+                   ::google::protobuf::RpcController* controller,
+                   const proto::HttpRequest* request,
+                   proto::HttpResponse* response,
+                   ::google::protobuf::Closure* done);
 
  private:
   bool initialized_ = false;

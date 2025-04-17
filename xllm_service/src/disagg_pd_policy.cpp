@@ -112,8 +112,20 @@ RoundRobinDisaggPdPolicy::RoundRobinDisaggPdPolicy() {
 
 RoundRobinDisaggPdPolicy::~RoundRobinDisaggPdPolicy() {}
 
-InstancesPair RoundRobinDisaggPdPolicy::select_instances_pair() {
+InstancesPair RoundRobinDisaggPdPolicy::select_instances_pair(bool only_prefill) {
   std::lock_guard<std::mutex> guard(mutex_);
+  // return the first available prefill instance
+  if (only_prefill) {
+    InstancesPair inst_pair;
+    for (const auto& inst : prefill_instance_) {
+      if (inst != nullptr) {
+        inst_pair.prefill_instance_http_addr = inst->name;
+        break;
+      }
+    }
+    return inst_pair;
+  }
+
   int prefill_count = prefill_instance_.size();
   int decode_count = decode_instance_.size();
   InstancesPair inst_pair;
