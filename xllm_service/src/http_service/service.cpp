@@ -201,7 +201,7 @@ void XllmHttpServiceImpl::get_serving(const std::string& serving_method,
   thread_pool_->schedule([/*req_attachment, */call_data, cntl, channel_ptr, target_uri]() {
     brpc::Controller redirect_cntl;
     redirect_cntl.http_request().uri() = target_uri.c_str();
-    redirect_cntl.http_request().set_method(brpc::HTTP_METHOD_POST);
+    redirect_cntl.http_request().set_method(brpc::HTTP_METHOD_GET);
 
     // Because `done'(last parameter) is NULL, this function waits until
     // the response comes back or error occurs(including timeout).
