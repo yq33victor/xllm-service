@@ -22,6 +22,7 @@ class InstanceMgr {
                               const InstanceMetaInfo& metainfo);
   ErrorCode update_instance_metainfo(const std::string& instance_name,
                                      const InstanceMetaInfo& metainfo);
+  InstanceMetaInfo get_instance_info(const std::string& instance_name);
 
   // select instances(prefill/decode/default etc.) to handle request
   // according the disagg pd policy (or some other policies.).

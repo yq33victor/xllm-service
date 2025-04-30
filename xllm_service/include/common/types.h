@@ -56,18 +56,24 @@ struct InstanceMetaInfo {
   InstanceMetaInfo() {
     set_init_timestamp();
   }
-  InstanceMetaInfo(const std::string& inst_name)
-      : name(inst_name) {
+  InstanceMetaInfo(const std::string& inst_name,
+                   const std::string rpc_addr)
+      : name(inst_name), rpc_address(rpc_addr) {
     set_init_timestamp();
   }
   InstanceMetaInfo(const std::string& inst_name,
+                   const std::string rpc_addr,
                    const InstanceType& inst_type)
-      : name(inst_name), type(inst_type) {
+      : name(inst_name), rpc_address(rpc_addr), type(inst_type) {
     set_init_timestamp();
   }
 
   std::string name = "";
+  std::string rpc_address = "";
   InstanceType type = InstanceType::DEFAULT;
+  uint64_t cluster_id;
+  std::vector<uint64_t> cache_ids;
+  std::vector<std::vector<uint64_t>> tensor_addrs;
 
   // latest heatbeat timestamp
   uint64_t latest_timestamp = 0;
@@ -84,11 +90,13 @@ struct InstanceMetaInfo {
 // the info be stored in etcd
 struct InstanceIdentityInfo {
   std::string instance_addr;
+  std::string rpc_addr;
   int8_t instance_type; // convert to InstanceType
 
   const std::string debug_string() const {
     std::string debug_str =
         "instance_addr: " + instance_addr + \
+        ", rpc_addr: " + rpc_addr + \
          ", instance_type: " + std::to_string((int)(instance_type));
     return debug_str;
   }

@@ -105,7 +105,7 @@ ErrorCode InstanceMgr::register_instance(const std::string& instance_name) {
     return ErrorCode::INSTANCE_EXISTED; 
   }
 
-  InstanceMetaInfo default_info(instance_name);
+  InstanceMetaInfo default_info(instance_name, "");
   instances_[instance_name] = default_info;
   disagg_pd_policy_->insert_instance(instance_name, &(instances_[instance_name]));
   // save instance metainfo to etcd
@@ -156,6 +156,7 @@ void InstanceMgr::save_persistence_metainfo(const InstanceMetaInfo& metainfo) {
   std::string key = ETCD_KEYS_PREFIX_MAP[metainfo.type] + metainfo.name;
   InstanceIdentityInfo value;
   value.instance_addr = metainfo.name;
+  value.rpc_addr = metainfo.rpc_address;
   value.instance_type = static_cast<int8_t>(metainfo.type);
   bool ok = etcd_client_->set(key, value);
   if (!ok) {
@@ -229,6 +230,15 @@ void InstanceMgr::update_instance_timestamp(const std::string& inst_name) {
 
 InstancesPair InstanceMgr::select_instances_pair(bool only_prefill) {
   return disagg_pd_policy_->select_instances_pair(only_prefill);
+}
+
+InstanceMetaInfo InstanceMgr::get_instance_info(const std::string& instance_name) {
+  std::lock_guard<std::mutex> guard(inst_mutex_);
+  if (instances_.find(instance_name) == instances_.end()) {
+    LOG(ERROR) << "Get instance info failed, instance is not registered, instance_name: " << instance_name;
+    return InstanceMetaInfo();
+  }
+  return instances_[instance_name];
 }
 
 } // namespace xllm_service

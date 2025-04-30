@@ -30,6 +30,9 @@ InstancesPair XllmRpcServiceImpl::select_instances_pair(bool only_prefill) {
   return instance_mgr_->select_instances_pair(only_prefill);
 }
 
+InstanceMetaInfo XllmRpcServiceImpl::get_instance_info(const std::string& instance_name) {
+  return instance_mgr_->get_instance_info(instance_name);
+}
 
 XllmRpcService::XllmRpcService(std::shared_ptr<XllmRpcServiceImpl> service)
     : xllm_service_(service) {
@@ -59,9 +62,47 @@ void XllmRpcService::RegisterInstance(
   } else if(req->has_type() && req->type() == proto::InstanceType::DECODE) {
     type = InstanceType::DECODE;
   }
-  InstanceMetaInfo metainfo(req->name(), type);
+  InstanceMetaInfo metainfo(req->name(), req->rpc_address(), type);
+  metainfo.cluster_id = req->cluster_id();
+  metainfo.cache_ids =
+      std::vector<uint64_t>(req->cache_ids().begin(),
+                            req->cache_ids().end());
+  for (auto& tensor_addr : req->tensor_addrs()) {
+    std::vector<uint64_t> addr =
+      std::vector<uint64_t>(tensor_addr.layer_addrs().begin(),
+                            tensor_addr.layer_addrs().end());
+    metainfo.tensor_addrs.emplace_back(std::move(addr));
+  }
   ErrorCode code = xllm_service_->register_instance(req->name(), metainfo);
   resp->set_status_code(ConvertErrorCode::to_int(code));
+}
+
+void XllmRpcService::GetInstanceInfo(
+    google::protobuf::RpcController* cntl_base,
+    const proto::InstanceID* req,
+    proto::InstanceMetaInfo* resp,
+    google::protobuf::Closure* done) {
+  brpc::ClosureGuard done_guard(done);
+  InstanceMetaInfo metainfo = xllm_service_->get_instance_info(req->name());
+  resp->set_name(metainfo.name);
+  resp->set_rpc_address(metainfo.rpc_address);
+  if (metainfo.type == InstanceType::PREFILL) {
+    resp->set_type(proto::InstanceType::PREFILL);
+  } else if (metainfo.type == InstanceType::DECODE) {
+    resp->set_type(proto::InstanceType::DECODE);
+  } else {
+    resp->set_type(proto::InstanceType::DEFAULT);
+  }
+  resp->set_cluster_id(metainfo.cluster_id);
+  for (auto& cache_id : metainfo.cache_ids) {
+    *(resp->mutable_cache_ids()->Add()) = cache_id;
+  }
+  for (auto& tensor_addr : metainfo.tensor_addrs) {
+    auto proto_layer_addr = resp->mutable_tensor_addrs()->Add();
+    for (auto& layer_addr : tensor_addr) {
+      *(proto_layer_addr->mutable_layer_addrs()->Add()) = layer_addr;
+    }
+  }
 }
 
 void XllmRpcService::Heartbeat(

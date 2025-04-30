@@ -1,4 +1,6 @@
 #pragma once
+
+#include <functional>
 #include <thread>
 
 #include "concurrent_queue.h"

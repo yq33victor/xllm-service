@@ -3,6 +3,9 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 enable_testing()
 
+# TODO: FIXME later
+option(USE_ASCEND "Enable NPU support" ON)
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -13,6 +16,10 @@ set(CMAKE_COLOR_DIAGNOSTICS ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_MESSAGE_LOG_LEVEL STATUS)
 set(CMAKE_VERBOSE_MAKEFILE ON)
+
+if (USE_ASCEND)
+    add_compile_options(-D_GLIBCXX_USE_CXX11_ABI=0)
+endif()
 
 # Set default build type
 if(NOT CMAKE_BUILD_TYPE)
@@ -118,6 +125,12 @@ list(APPEND COMMON_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/third_party)
 list(APPEND COMMON_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/third_party/etcd_cpp_apiv3)
 
 # cpprestsdk
+if (DEFINED ENV{VCPKG_ROOT} AND USE_ASCEND)
+    include_directories("$ENV{VCPKG_ROOT}/packages/boost-locale_x64-linux/include")
+    link_directories("$ENV{VCPKG_ROOT}/packages/boost-locale_x64-linux/lib")
+    include_directories("$ENV{VCPKG_ROOT}/packages/boost-interprocess_x64-linux/include")
+    link_directories("$ENV{VCPKG_ROOT}/packages/boost-interprocess_x64-linux/lib")
+endif()
 set(CPPREST_EXCLUDE_WEBSOCKETS ON CACHE BOOL "Exclude websockets functionality." FORCE)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-format-truncation")
 set(CPPREST_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/cpprestsdk/Release/include)
@@ -129,6 +142,10 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/third_party/cpprestsdk)
 link_directories(${ETCD_CLIENT_OUTPUT_DIR}/src)
 
 # brpc
+if (DEFINED ENV{VCPKG_ROOT} AND USE_ASCEND)
+    include_directories("$ENV{VCPKG_ROOT}/packages/zlib_x64-linux/include")
+    link_directories("$ENV{VCPKG_ROOT}/packages/zlib_x64-linux/lib")
+endif()
 set(BRPC_OUTPUT_DIR ${CMAKE_BINARY_DIR}/third_party/brpc/output)
 include_directories(${BRPC_OUTPUT_DIR}/include)
 link_directories(${BRPC_OUTPUT_DIR}/lib)

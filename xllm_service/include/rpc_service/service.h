@@ -16,6 +16,8 @@ class XllmRpcServiceImpl final {
   ErrorCode update_instance_metainfo(const std::string& instance_name,
                                      const InstanceMetaInfo& metainfo);
 
+  InstanceMetaInfo get_instance_info(const std::string& instance_name);
+
   // methods for master
 
   // select instances(prefill/decode/default etc.) to handle request
@@ -48,6 +50,12 @@ class XllmRpcService : public proto::XllmRpcService {
       google::protobuf::RpcController* cntl_base,
       const proto::HeartbeatRequest* req,
       proto::Status* resp,
+      google::protobuf::Closure* done) override;
+
+  virtual void GetInstanceInfo(
+      google::protobuf::RpcController* cntl_base,
+      const proto::InstanceID* req,
+      proto::InstanceMetaInfo* resp,
       google::protobuf::Closure* done) override;
 
  private:

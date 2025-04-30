@@ -19,9 +19,19 @@ enum InstanceType {
   DECODE = 2;
 }
 
+message WorkerKVAddr {
+  repeated uint64 layer_addrs = 1;
+}
+
 message InstanceMetaInfo {
+  // http server address currently
   string name = 1;
-  optional InstanceType type = 2;
+  // rpc server address
+  string rpc_address = 2;
+  optional InstanceType type = 3;
+  uint64 cluster_id = 4;
+  repeated int64 cache_ids = 5;
+  repeated WorkerKVAddr tensor_addrs = 6;
 }
 
 // TODO: add metainfo/metrics ?
@@ -29,9 +39,14 @@ message HeartbeatRequest {
   string name = 1;
 }
 
+message InstanceID {
+  string name = 1;
+}
+
 service XllmRpcService {
   rpc Hello(Empty) returns (Status) {}
   rpc RegisterInstance(InstanceMetaInfo) returns (StatusCode) {}
+  rpc GetInstanceInfo(InstanceID) returns (InstanceMetaInfo) {}
   rpc Heartbeat(HeartbeatRequest) returns (Status) {}
 }
 
