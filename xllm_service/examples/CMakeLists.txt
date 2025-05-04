@@ -28,6 +28,6 @@ cc_binary(
   SRCS
     http_client_test.cpp
   DEPS
-    brpc
     gflags::gflags
 )
+target_link_libraries(http_client_test PRIVATE brpc-static)

@@ -23,13 +23,13 @@ cc_library(
     src/etcd_client.cpp
   DEPS
     absl::strings
-    brpc-static
     cpprest
     etcd-cpp-api
     glog::glog
     proto::proto_rpc_service
     nlohmann_json::nlohmann_json
 )
+target_link_libraries(xllm_rpc_service PRIVATE brpc-static)
 
 cc_binary(
   NAME 
@@ -50,10 +50,10 @@ cc_library(
   SRCS
     src/rpc_service/client.cpp
   DEPS
-    brpc-static
     glog::glog
     proto::proto_rpc_service
 )
+target_link_libraries(xllm_rpc_client PRIVATE brpc-static)
 
 # ---- http service ----
 
