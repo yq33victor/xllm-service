@@ -241,4 +241,17 @@ InstanceMetaInfo InstanceMgr::get_instance_info(const std::string& instance_name
   return instances_[instance_name];
 }
 
+// TODO: refactor later, currently return all decode instances
+std::vector<std::string> InstanceMgr::get_static_decode_list(const std::string& instance_name) {
+  std::vector<std::string> decode_list;
+  std::lock_guard<std::mutex> guard(inst_mutex_);
+  for (auto& inst : instances_) {
+    if (inst.second.type == InstanceType::DECODE) {
+      decode_list.emplace_back(inst.second.name);
+    }
+  }
+
+  return decode_list;
+}
+
 } // namespace xllm_service

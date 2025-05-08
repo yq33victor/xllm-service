@@ -43,10 +43,15 @@ message InstanceID {
   string name = 1;
 }
 
+message InstanceIDs {
+  repeated string names = 1;
+}
+
 service XllmRpcService {
   rpc Hello(Empty) returns (Status) {}
   rpc RegisterInstance(InstanceMetaInfo) returns (StatusCode) {}
   rpc GetInstanceInfo(InstanceID) returns (InstanceMetaInfo) {}
   rpc Heartbeat(HeartbeatRequest) returns (Status) {}
+  rpc GetStaticDecodeList(InstanceID) returns (InstanceIDs) {}
 }
 

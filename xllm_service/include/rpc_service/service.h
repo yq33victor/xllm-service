@@ -24,6 +24,8 @@ class XllmRpcServiceImpl final {
   // according the disagg pd policy (or some other policies.).
   InstancesPair select_instances_pair(bool only_prefill = false);
 
+  std::vector<std::string> get_static_decode_list(const std::string& prefill_name);
+
  private:
   std::unique_ptr<InstanceMgr> instance_mgr_;
 };
@@ -56,6 +58,12 @@ class XllmRpcService : public proto::XllmRpcService {
       google::protobuf::RpcController* cntl_base,
       const proto::InstanceID* req,
       proto::InstanceMetaInfo* resp,
+      google::protobuf::Closure* done) override;
+
+  virtual void GetStaticDecodeList(
+      google::protobuf::RpcController* cntl_base,
+      const proto::InstanceID* req,
+      proto::InstanceIDs* resp,
       google::protobuf::Closure* done) override;
 
  private:

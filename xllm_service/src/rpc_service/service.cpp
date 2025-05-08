@@ -34,6 +34,10 @@ InstanceMetaInfo XllmRpcServiceImpl::get_instance_info(const std::string& instan
   return instance_mgr_->get_instance_info(instance_name);
 }
 
+std::vector<std::string> XllmRpcServiceImpl::get_static_decode_list(const std::string& instance_name) {
+  return instance_mgr_->get_static_decode_list(instance_name);
+}
+
 XllmRpcService::XllmRpcService(std::shared_ptr<XllmRpcServiceImpl> service)
     : xllm_service_(service) {
 }
@@ -114,6 +118,18 @@ void XllmRpcService::Heartbeat(
   auto inst_name = req->name();
   xllm_service_->heartbeat(inst_name);
   resp->set_ok(true);
+}
+
+void XllmRpcService::GetStaticDecodeList(
+    google::protobuf::RpcController* cntl_base,
+    const proto::InstanceID* req,
+    proto::InstanceIDs* resp,
+    google::protobuf::Closure* done) {
+  brpc::ClosureGuard done_guard(done);
+  std::vector<std::string> decode_list = xllm_service_->get_static_decode_list(req->name());
+  for (auto& d : decode_list) {
+    *(resp->mutable_names()->Add()) = std::move(d);
+  }
 }
 
 } // namespace xllm_service

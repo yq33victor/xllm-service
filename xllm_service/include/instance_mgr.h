@@ -28,6 +28,8 @@ class InstanceMgr {
   // according the disagg pd policy (or some other policies.).
   InstancesPair select_instances_pair(bool only_prefill = false);
 
+  std::vector<std::string> get_static_decode_list(const std::string& instance_name);
+
  private:
   void internal_init();
   // save instance metainfo to etcd
