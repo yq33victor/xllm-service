@@ -9,25 +9,34 @@ cc_library(
   NAME
   xllm_rpc_service
   HDRS
+    include/common/call_data.h
+    include/common/threadpool.h
     include/common/types.h
     include/common/utils.h
-    include/rpc_service/service.h
-    include/instance_mgr.h
     include/disagg_pd_policy.h
     include/etcd_client.h
+    include/instance_mgr.h
+    include/rpc_service/response_handler.h
+    include/rpc_service/service.h
+    include/xllm/output.h
+    include/xllm/status.h
   SRCS
+    src/common/threadpool.cpp
     src/common/utils.cpp
-    src/rpc_service/service.cpp
     src/disagg_pd_policy.cpp
-    src/instance_mgr.cpp
     src/etcd_client.cpp
+    src/instance_mgr.cpp
+    src/rpc_service/response_handler.cpp
+    src/rpc_service/service.cpp
   DEPS
+    absl::random_random
     absl::strings
     cpprest
     etcd-cpp-api
     glog::glog
-    proto::proto_rpc_service
     nlohmann_json::nlohmann_json
+    proto::proto_rpc_service
+    proto_xllm
 )
 target_link_libraries(xllm_rpc_service PRIVATE brpc-static)
 
@@ -62,18 +71,25 @@ cc_library(
   xllm_http_service
   HDRS
     include/common/closure_guard.h
+    include/common/call_data.h
     include/common/concurrent_queue.h
     include/common/threadpool.h
     include/http_service/service.h
+    include/xllm/output.h
+    include/xllm/status.h
+    include/xllm/uuid.h
   SRCS
     src/common/threadpool.cpp
-    src/http_service/service.cpp
+    src/http_service/service.cpp 
+    include/xllm/uuid.cpp
   DEPS
     :xllm_rpc_service
+    absl::random_random
     absl::synchronization
     glog::glog
     nlohmann_json::nlohmann_json
     proto::proto_http_service
+    proto_xllm
 )
 target_link_libraries(xllm_http_service PRIVATE brpc-static leveldb::leveldb ZLIB::ZLIB protobuf::libprotobuf OpenSSL::SSL OpenSSL::Crypto)
 

@@ -1,9 +1,21 @@
 #pragma once
 
+#include <mutex>
+#include <unordered_map>
+
+#include "chat.pb.h"
+#include "common/call_data.h"
+#include "common/threadpool.h"
+#include "completion.pb.h"
 #include "instance_mgr.h"
+#include "response_handler.h"
 #include "xllm_rpc_service.pb.h"
+#include "xllm/output.h"
+#include "xllm/status.h"
 
 namespace xllm_service {
+
+using OutputCallback = std::function<bool(llm::RequestOutput output)>;
 
 class XllmRpcServiceImpl final {
  public:
@@ -26,8 +38,41 @@ class XllmRpcServiceImpl final {
 
   std::vector<std::string> get_static_decode_list(const std::string& prefill_name);
 
+ public:
+  // handle generations from prefill/decode instance 
+  bool handle_generation(const llm::RequestOutput& request_output);
+
+  // register new requests from http service
+  // keep http callback util request finished.
+  // `handle_generation` will handle response with these callbacks.
+  bool record_new_request(std::shared_ptr<ChatCallData> call_data,
+                          const std::string& service_request_id,
+                          bool stream,
+                          const std::string& model,
+                          bool include_usage);
+  bool record_new_request(std::shared_ptr<CompletionCallData> call_data,
+                          const std::string& service_request_id,
+                          bool stream,
+                          const std::string& model,
+                          bool include_usage);
+  void finish_request(const std::string& service_request_id);
+
  private:
   std::unique_ptr<InstanceMgr> instance_mgr_;
+
+  // `request` -> `callback` map
+  std::unordered_map<std::string, OutputCallback> callbacks_;
+  std::mutex callback_mutex_;
+
+  // use threadpool to handle all RequestOuputs queue
+  static constexpr size_t kOutputTheadNum_ = 128;  // magic num
+  ThreadPool output_threadpools_[kOutputTheadNum_];
+  // A request will be handled in the same thread to guarantee the token's order.
+  std::unordered_map<std::string, size_t> remote_requests_output_thread_map_;
+  size_t next_thread_idx = 0;
+  std::mutex thread_map_mutex_;
+
+  ResponseHandler response_handler_;
 };
 
 // parse proto data and call XllmRpcService
@@ -64,6 +109,15 @@ class XllmRpcService : public proto::XllmRpcService {
       google::protobuf::RpcController* cntl_base,
       const proto::InstanceID* req,
       proto::InstanceIDs* resp,
+      google::protobuf::Closure* done) override;
+
+
+  // xllm service receive response from decode instance directly in disagg pd mode.
+  // This can eliminate the cost brought by forwarding through prefill.
+  virtual void Generations(
+      google::protobuf::RpcController* cntl_base,
+      const proto::DisaggStreamGenerations* req,
+      proto::StatusSet* resp,
       google::protobuf::Closure* done) override;
 
  private:

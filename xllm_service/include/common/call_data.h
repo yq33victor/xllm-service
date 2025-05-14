@@ -3,6 +3,8 @@
 #include <brpc/controller.h>
 #include <butil/iobuf.h>
 #include <glog/logging.h>
+#include <grpcpp/grpcpp.h>
+#include <json2pb/pb_to_json.h>
 #include <string>
 
 // Interface for the classes that are used to handle grpc requests.
@@ -39,13 +41,16 @@ class CallData {
   std::string x_request_time;
 };
 
-class StreamCallDataBrpc : public CallData {
+template <typename Request, typename Response>
+class StreamCallData : public CallData {
  public:
-  StreamCallDataBrpc(brpc::Controller* controller,
-                     bool stream,
-                     ::google::protobuf::Closure* done)
+  StreamCallData(brpc::Controller* controller,
+                 bool stream,
+                 ::google::protobuf::Closure* done,
+                 Response* response)
       : controller_(controller),
-        done_(done) {
+        done_(done),
+        response_(response) {
     stream_ = stream;
     get_x_request_id(x_request_id, controller_);
     get_x_request_time(x_request_time, controller_);
@@ -64,9 +69,12 @@ class StreamCallDataBrpc : public CallData {
       controller_->http_response().SetHeader("Content-Type",
                                              "text/javascript; charset=utf-8");
     }
+
+    json_options_.bytes_to_base64 = false;
+    json_options_.jsonify_empty_array = true;
   }
 
-  ~StreamCallDataBrpc() {
+  ~StreamCallData() {
     // For non stream response, call brpc done Run
     if (!stream_) {
       done_->Run();
@@ -78,6 +86,33 @@ class StreamCallDataBrpc : public CallData {
   // For non stream response
   bool write_and_finish(const std::string& attachment/*json string*/) {
     controller_->response_attachment() = attachment;
+    return true;
+  }
+
+  bool finish_with_error(const grpc::StatusCode& code,
+                         const std::string& error_message) {
+    if (!stream_) {
+      controller_->SetFailed(error_message);
+
+    } else {
+      io_buf_.clear();
+      io_buf_.append(error_message);
+      pa_->Write(io_buf_);
+    }
+
+    return true;
+  }
+
+  bool write_and_finish(Response& response,
+                        grpc::Status grpc_status = grpc::Status::OK) {
+    butil::IOBufAsZeroCopyOutputStream json_output(
+        &controller_->response_attachment());
+    std::string err_msg;
+    if (!json2pb::ProtoMessageToJson(
+            response, &json_output, json_options_, &err_msg)) {
+      return finish_with_error(grpc::StatusCode::INTERNAL, err_msg);
+    }
+
     return true;
   }
 
@@ -112,6 +147,31 @@ class StreamCallDataBrpc : public CallData {
     return true;
   }
 
+  bool write(Response& response) {
+    io_buf_.clear();
+    io_buf_.append("data: ");
+    butil::IOBufAsZeroCopyOutputStream json_output(&io_buf_);
+    std::string err_msg;
+    if (!json2pb::ProtoMessageToJson(
+            response, &json_output, json_options_, &err_msg)) {
+      LOG(ERROR) << "Failed to convert proto to json: " << err_msg;
+      return false;
+    }
+    io_buf_.append("\n\n");
+
+    pa_->Write(io_buf_);
+    return true;
+  }
+
+  bool finish() {
+    io_buf_.clear();
+    io_buf_.append("data: [DONE]\n\n");
+
+    pa_->Write(io_buf_);
+    return true;
+  }
+
+  Response& response() { return *response_; }
   ::google::protobuf::Closure* done() { return done_; }
   bool finished() { return finished_; }
 
@@ -119,9 +179,12 @@ class StreamCallDataBrpc : public CallData {
   brpc::Controller* controller_;
   ::google::protobuf::Closure* done_;
 
+  Response* response_;
+
   bool stream_ = false;
   butil::intrusive_ptr<brpc::ProgressiveAttachment> pa_;
   butil::IOBuf io_buf_;
 
   bool finished_ = false;
+  json2pb::Pb2JsonOptions json_options_;
 };

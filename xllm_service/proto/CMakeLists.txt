@@ -15,3 +15,11 @@ proto_library(
     xllm_http_service.proto
 )
 
+proto_library(
+  NAME
+    proto_xllm
+  SRCS
+    xllm/chat.proto
+    xllm/common.proto
+    xllm/completion.proto
+)
