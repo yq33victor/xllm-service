@@ -72,8 +72,8 @@ struct InstanceMetaInfo {
   std::string rpc_address = "";
   InstanceType type = InstanceType::DEFAULT;
   uint64_t cluster_id;
-  std::vector<uint64_t> cache_ids;
-  std::vector<std::vector<uint64_t>> tensor_addrs;
+  std::vector<uint64_t> k_cache_ids;
+  std::vector<uint64_t> v_cache_ids;
 
   // latest heatbeat timestamp
   uint64_t latest_timestamp = 0;

@@ -252,15 +252,12 @@ void XllmRpcService::RegisterInstance(
   }
   InstanceMetaInfo metainfo(req->name(), req->rpc_address(), type);
   metainfo.cluster_id = req->cluster_id();
-  metainfo.cache_ids =
-      std::vector<uint64_t>(req->cache_ids().begin(),
-                            req->cache_ids().end());
-  for (auto& tensor_addr : req->tensor_addrs()) {
-    std::vector<uint64_t> addr =
-      std::vector<uint64_t>(tensor_addr.layer_addrs().begin(),
-                            tensor_addr.layer_addrs().end());
-    metainfo.tensor_addrs.emplace_back(std::move(addr));
-  }
+  metainfo.k_cache_ids =
+      std::vector<uint64_t>(req->k_cache_ids().begin(),
+                            req->k_cache_ids().end());
+  metainfo.v_cache_ids =
+      std::vector<uint64_t>(req->v_cache_ids().begin(),
+                            req->v_cache_ids().end());
   ErrorCode code = xllm_service_->register_instance(req->name(), metainfo);
   resp->set_status_code(ConvertErrorCode::to_int(code));
 }
@@ -282,14 +279,11 @@ void XllmRpcService::GetInstanceInfo(
     resp->set_type(proto::InstanceType::DEFAULT);
   }
   resp->set_cluster_id(metainfo.cluster_id);
-  for (auto& cache_id : metainfo.cache_ids) {
-    *(resp->mutable_cache_ids()->Add()) = cache_id;
+  for (auto& k_cache_id : metainfo.k_cache_ids) {
+    *(resp->mutable_k_cache_ids()->Add()) = k_cache_id;
   }
-  for (auto& tensor_addr : metainfo.tensor_addrs) {
-    auto proto_layer_addr = resp->mutable_tensor_addrs()->Add();
-    for (auto& layer_addr : tensor_addr) {
-      *(proto_layer_addr->mutable_layer_addrs()->Add()) = layer_addr;
-    }
+  for (auto& v_cache_id : metainfo.v_cache_ids) {
+    *(resp->mutable_v_cache_ids()->Add()) = v_cache_id;
   }
 }
 

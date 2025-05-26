@@ -34,8 +34,8 @@ message InstanceMetaInfo {
   string rpc_address = 2;
   optional InstanceType type = 3;
   uint64 cluster_id = 4;
-  repeated int64 cache_ids = 5;
-  repeated WorkerKVAddr tensor_addrs = 6;
+  repeated int64 k_cache_ids = 5;
+  repeated int64 v_cache_ids = 6;
 }
 
 // TODO: add metainfo/metrics ?
