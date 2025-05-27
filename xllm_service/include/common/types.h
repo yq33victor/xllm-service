@@ -9,6 +9,7 @@ namespace xllm_service {
 
 struct HttpServiceConfig {
   int num_threads = 16;
+  int timeout_ms = -1;
   std::string test_instance_addr = "";
 };
 
@@ -33,14 +34,14 @@ enum class ErrorCode : int32_t {
 };
 
 class ConvertErrorCode {
-  public:
-   static int32_t to_int(ErrorCode code) noexcept {
+public:
+  static int32_t to_int(ErrorCode code) noexcept {
     return static_cast<int32_t>(code);
-   }
+  }
 
-   static ErrorCode from_int(int32_t code) noexcept {
+  static ErrorCode from_int(int32_t code) noexcept {
     return static_cast<ErrorCode>(code);
-   }
+  }
 };
 
 enum class InstanceType : int8_t {
@@ -52,18 +53,14 @@ enum class InstanceType : int8_t {
 };
 
 struct InstanceMetaInfo {
- public:
-  InstanceMetaInfo() {
-    set_init_timestamp();
-  }
-  InstanceMetaInfo(const std::string& inst_name,
-                   const std::string rpc_addr)
+public:
+  InstanceMetaInfo() { set_init_timestamp(); }
+  InstanceMetaInfo(const std::string &inst_name, const std::string rpc_addr)
       : name(inst_name), rpc_address(rpc_addr) {
     set_init_timestamp();
   }
-  InstanceMetaInfo(const std::string& inst_name,
-                   const std::string rpc_addr,
-                   const InstanceType& inst_type)
+  InstanceMetaInfo(const std::string &inst_name, const std::string rpc_addr,
+                   const InstanceType &inst_type)
       : name(inst_name), rpc_address(rpc_addr), type(inst_type) {
     set_init_timestamp();
   }
@@ -78,11 +75,12 @@ struct InstanceMetaInfo {
   // latest heatbeat timestamp
   uint64_t latest_timestamp = 0;
 
- private:
+private:
   void set_init_timestamp() {
     auto now = std::chrono::system_clock::now();
-    auto timestamp_ms =
-        std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
+    auto timestamp_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                            now.time_since_epoch())
+                            .count();
     latest_timestamp = timestamp_ms;
   }
 };
@@ -95,9 +93,8 @@ struct InstanceIdentityInfo {
 
   const std::string debug_string() const {
     std::string debug_str =
-        "instance_addr: " + instance_addr + \
-        ", rpc_addr: " + rpc_addr + \
-         ", instance_type: " + std::to_string((int)(instance_type));
+        "instance_addr: " + instance_addr + ", rpc_addr: " + rpc_addr +
+        ", instance_type: " + std::to_string((int)(instance_type));
     return debug_str;
   }
 };
