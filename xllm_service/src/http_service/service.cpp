@@ -246,7 +246,20 @@ void XllmHttpServiceImpl::post_serving(
     }
   }
   std::string model = json_value.at("model").get<std::string>();
-  // TODO: add `include_usage`, `created_time` fileds etc.
+  bool include_usage = false;
+  if (json_value.contains("stream_options")) {
+    try {
+      include_usage =
+          json_value["stream_options"].at("include_usage").get<bool>();
+    } catch (const std::exception &e) {
+      LOG(ERROR) << "Invalid args(include_usage) type in request, required "
+                    "bool type value.";
+      cntl->SetFailed("Invalid args(include_usage) type in request, required "
+                      "bool type value.");
+      return;
+    }
+  }
+  // TODO: add `created_time` fileds etc.
   // create xllm_service request_id: service_request_id
   std::string service_request_id = generate_service_request_id(serving_method);
   json_value["service_request_id"] = service_request_id;
@@ -276,7 +289,7 @@ void XllmHttpServiceImpl::post_serving(
     auto call_data = std::make_shared<CompletionCallData>(
         cntl, stream, done_guard.release(), resp_pb);
     handle_v1_completions(call_data, req_attachment, service_request_id, stream,
-                          model, false /*include_usage*/, target_uri);
+                          model, include_usage, target_uri);
   } else if (serving_method == "/v1/chat/completions") {
     auto arena = response->GetArena();
     auto resp_pb =
@@ -284,8 +297,7 @@ void XllmHttpServiceImpl::post_serving(
     auto call_data = std::make_shared<ChatCallData>(
         cntl, stream, done_guard.release(), resp_pb);
     handle_v1_chat_completions(call_data, req_attachment, service_request_id,
-                               stream, model, false /*include_usage*/,
-                               target_uri);
+                               stream, model, include_usage, target_uri);
   } else {
     LOG(ERROR) << "Not supported method: " << serving_method;
     cntl->SetFailed("Not supported method: " + serving_method);
