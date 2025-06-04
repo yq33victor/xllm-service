@@ -33,9 +33,10 @@ message InstanceMetaInfo {
   // rpc server address
   string rpc_address = 2;
   optional InstanceType type = 3;
-  uint64 cluster_id = 4;
+  repeated uint64 cluster_ids = 4;
   repeated int64 k_cache_ids = 5;
   repeated int64 v_cache_ids = 6;
+  int32 dp_size = 7;
 }
 
 // TODO: add metainfo/metrics ?

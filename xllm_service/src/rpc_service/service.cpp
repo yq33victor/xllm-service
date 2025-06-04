@@ -251,13 +251,16 @@ void XllmRpcService::RegisterInstance(
     type = InstanceType::DECODE;
   }
   InstanceMetaInfo metainfo(req->name(), req->rpc_address(), type);
-  metainfo.cluster_id = req->cluster_id();
+  metainfo.cluster_ids =
+      std::vector<uint64_t>(req->cluster_ids().begin(),
+                            req->cluster_ids().end());
   metainfo.k_cache_ids =
       std::vector<uint64_t>(req->k_cache_ids().begin(),
                             req->k_cache_ids().end());
   metainfo.v_cache_ids =
       std::vector<uint64_t>(req->v_cache_ids().begin(),
                             req->v_cache_ids().end());
+  metainfo.dp_size = req->dp_size();
   ErrorCode code = xllm_service_->register_instance(req->name(), metainfo);
   resp->set_status_code(ConvertErrorCode::to_int(code));
 }
@@ -278,13 +281,16 @@ void XllmRpcService::GetInstanceInfo(
   } else {
     resp->set_type(proto::InstanceType::DEFAULT);
   }
-  resp->set_cluster_id(metainfo.cluster_id);
+  for (auto& cluster_id : metainfo.cluster_ids) {
+    *(resp->mutable_cluster_ids()->Add()) = cluster_id;
+  }
   for (auto& k_cache_id : metainfo.k_cache_ids) {
     *(resp->mutable_k_cache_ids()->Add()) = k_cache_id;
   }
   for (auto& v_cache_id : metainfo.v_cache_ids) {
     *(resp->mutable_v_cache_ids()->Add()) = v_cache_id;
   }
+  resp->set_dp_size(metainfo.dp_size);
 }
 
 void XllmRpcService::Heartbeat(

@@ -68,9 +68,10 @@ public:
   std::string name = "";
   std::string rpc_address = "";
   InstanceType type = InstanceType::DEFAULT;
-  uint64_t cluster_id;
+  std::vector<uint64_t> cluster_ids;
   std::vector<uint64_t> k_cache_ids;
   std::vector<uint64_t> v_cache_ids;
+  int32_t dp_size;
 
   // latest heatbeat timestamp
   uint64_t latest_timestamp = 0;
