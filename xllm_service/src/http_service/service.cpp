@@ -1,12 +1,14 @@
 #include <absl/time/clock.h>
 #include <absl/time/time.h>
 #include <brpc/controller.h>
+#include <brpc/progressive_reader.h>
 #include <glog/logging.h>
 #include <nlohmann/json.hpp>
 
 #include "chat.pb.h"
 #include "common/call_data.h"
 #include "common/closure_guard.h"
+#include "common/utils.h"
 #include "completion.pb.h"
 #include "http_service/service.h"
 #include "rpc_service/service.h"
@@ -30,6 +32,8 @@ XllmHttpServiceImpl::XllmHttpServiceImpl(
     std::shared_ptr<XllmRpcServiceImpl> rpc_service,
     const HttpServiceConfig &config)
     : config_(config), rpc_service_(rpc_service) {
+  enable_decode_response_to_service_ =
+      utils::get_bool_env("ENABLE_DECODE_RESPONSE_TO_SERVICE", false);
   initialized_ = true;
   thread_pool_ = std::make_unique<ThreadPool>(config_.num_threads);
 }
@@ -108,18 +112,86 @@ void XllmHttpServiceImpl::Hello(::google::protobuf::RpcController *controller,
   response->set_pong(request->ping());
 }
 
-void XllmHttpServiceImpl::handle_v1_completions(
-    std::shared_ptr<CompletionCallData> call_data,
+namespace {
+template<typename T>
+void handle_non_stream_response(brpc::Controller* cntl, std::shared_ptr<T> call_data) {
+  std::unique_ptr<brpc::Controller> cntl_guard(cntl);
+  if (cntl->Failed()) {
+    LOG(WARNING) << "Fail to send stream generation, " << cntl->ErrorText();
+    return;
+  }
+
+  call_data->write_and_finish(
+        cntl->response_attachment().to_string());
+}
+
+template<typename T>
+void handle_first_response(brpc::Controller* cntl, std::shared_ptr<T> call_data, bool stream) {
+  std::unique_ptr<brpc::Controller> cntl_guard(cntl);
+  if (cntl->Failed()) {
+    LOG(WARNING) << "Fail to send stream generation, " << cntl->ErrorText();
+    return;
+  }
+  if (stream) {
+    // write first token from prefill
+    call_data->write(cntl->response_attachment().to_string());
+  }
+  // non-stream, all generated tokens will be sent from decode via rpc service.
+}
+
+template<typename T>
+class CustomProgressiveReader : public brpc::ProgressiveReader {
+ public:
+  explicit CustomProgressiveReader(brpc::Controller* redirect_cntl,
+                                   std::shared_ptr<T> call_data)
+      : redirect_cntl_(redirect_cntl), call_data_(call_data) {}
+
+  virtual ~CustomProgressiveReader() {
+    delete redirect_cntl_;
+  }
+
+  // Called when one part was read.
+  // Error returned is treated as *permanent* and the socket where the
+  // data was read will be closed.
+  // A temporary error may be handled by blocking this function, which
+  // may block the HTTP parsing on the socket.
+  virtual butil::Status OnReadOnePart(const void* data, size_t length) {
+    call_data_->write(std::string((char*)data, length));
+    return butil::Status::OK();
+  }
+
+  // Called when there's nothing to read anymore. The `status' is a hint for
+  // why this method is called.
+  // - status.ok(): the message is complete and successfully consumed.
+  // - otherwise: socket was broken or OnReadOnePart() failed.
+  // This method will be called once and only once. No other methods will
+  // be called after. User can release the memory of this object inside.
+  virtual void OnEndOfMessage(const butil::Status& status) {
+    delete this;
+  }
+
+ private:
+  brpc::Controller* redirect_cntl_ = nullptr;
+  std::shared_ptr<T> call_data_;
+};
+}
+
+template<typename T>
+void XllmHttpServiceImpl::handle(
+    std::shared_ptr<T> call_data,
     const std::string &req_attachment, const std::string &service_request_id,
     bool stream, const std::string &model, bool include_usage,
-    const std::string &target_uri) {
-  bool success = rpc_service_->record_new_request(call_data, service_request_id,
-                                                  stream, model, include_usage);
-  if (!success) {
-    LOG(ERROR) << "rpc service add new request error: " << service_request_id;
-    call_data->finish_with_error("Internal runtime error.");
-    rpc_service_->finish_request(service_request_id);
-    return;
+    const std::string &target_uri, const std::string &method) {
+  // record request when enable_decode_response_to_service.
+  if (enable_decode_response_to_service_) {
+    bool success = rpc_service_->record_new_request(call_data, service_request_id,
+                                                    stream, model, include_usage);
+    if (!success) {
+      LOG(ERROR) << "rpc service add new request error: " << service_request_id;
+      call_data->finish_with_error("Internal runtime error.");
+      rpc_service_->finish_request(service_request_id);
+      return;
+    }
   }
 
   // async redistribute the request and wait the response
@@ -129,33 +201,71 @@ void XllmHttpServiceImpl::handle_v1_completions(
   thread_pool_->schedule([this, service_request_id, stream,
                           req_attachment = std::move(req_attachment), call_data,
                           channel_ptr,
-                          target_uri = target_uri + "/v1/completions"]() {
-    brpc::Controller redirect_cntl;
-    redirect_cntl.http_request().uri() = target_uri.c_str();
-    redirect_cntl.http_request().set_method(brpc::HTTP_METHOD_POST);
-    // redirect the input request content
-    redirect_cntl.request_attachment().append(req_attachment);
+                          target_uri = target_uri + method]() {
+    brpc::Controller* redirect_cntl = new brpc::Controller();
+    redirect_cntl->http_request().uri() = target_uri.c_str();
+    redirect_cntl->http_request().set_method(brpc::HTTP_METHOD_POST);
 
-    // Because `done'(last parameter) is NULL, this function waits until
-    // the response comes back or error occurs(including timeout).
-    channel_ptr->CallMethod(NULL, &redirect_cntl, NULL, NULL, NULL);
-    if (redirect_cntl.Failed()) {
-      LOG(ERROR) << "Redirect to instance error: " << redirect_cntl.ErrorText();
-      call_data->finish_with_error(redirect_cntl.ErrorText());
-      rpc_service_->finish_request(service_request_id);
+    // redirect the input request content
+    redirect_cntl->request_attachment().append(req_attachment);
+
+    // 1. tokens will be received via rpc channel.
+    //
+    if (enable_decode_response_to_service_) {
+      google::protobuf::Closure* done = brpc::NewCallback(
+          &handle_first_response<T>, redirect_cntl, call_data, stream);
+      channel_ptr->CallMethod(NULL, redirect_cntl, NULL, NULL, done);
+      if (redirect_cntl->Failed()) {
+        LOG(ERROR) << "Redirect to instance error: " << redirect_cntl->ErrorText();
+        call_data->finish_with_error(redirect_cntl->ErrorText());
+        rpc_service_->finish_request(service_request_id);
+        delete done;
+        delete redirect_cntl;
+        return;
+      }
       return;
     }
 
-    // TODO: consider finish status here? like only decode one token.
+    // 2. tokens will be received via http channel.
     //
     if (stream) {
-      if (!call_data->write(redirect_cntl.response_attachment().to_string())) {
-        LOG(ERROR) << "Write response to call_data failed";
-        rpc_service_->finish_request(service_request_id);
+      // receive tokens in progressive mode.
+      redirect_cntl->response_will_be_read_progressively();
+
+      // Because `done'(last parameter) is NULL, this function waits until
+      // the response comes back or error occurs(including timeout).
+      channel_ptr->CallMethod(NULL, redirect_cntl, NULL, NULL, NULL);
+      if (redirect_cntl->Failed()) {
+        LOG(ERROR) << "Redirect to instance error: " << redirect_cntl->ErrorText();
+        call_data->finish_with_error(redirect_cntl->ErrorText());
+        delete redirect_cntl;
+        return;
+      }
+      auto reader = new CustomProgressiveReader<T>(redirect_cntl, call_data);
+      // redirect_cntl and reader will be deleted in CustomProgressiveReader.
+      redirect_cntl->ReadProgressiveAttachmentBy(reader);
+    } else {
+      google::protobuf::Closure* done = brpc::NewCallback(
+          &handle_non_stream_response<T>, redirect_cntl, call_data);
+      channel_ptr->CallMethod(NULL, redirect_cntl, NULL, NULL, done);
+      if (redirect_cntl->Failed()) {
+        LOG(ERROR) << "Redirect to instance error: " << redirect_cntl->ErrorText();
+        call_data->finish_with_error(redirect_cntl->ErrorText());
+        delete done;
+        delete redirect_cntl;
+        return;
       }
     }
-    // non-stream, results will be sent by decode instance.
   });
+}
+
+void XllmHttpServiceImpl::handle_v1_completions(
+    std::shared_ptr<CompletionCallData> call_data,
+    const std::string &req_attachment, const std::string &service_request_id,
+    bool stream, const std::string &model, bool include_usage,
+    const std::string &target_uri) {
+  handle(call_data, req_attachment, service_request_id, stream,
+         model, include_usage, target_uri, "/v1/completions");
 }
 
 void XllmHttpServiceImpl::handle_v1_chat_completions(
@@ -163,49 +273,8 @@ void XllmHttpServiceImpl::handle_v1_chat_completions(
     const std::string &service_request_id, bool stream,
     const std::string &model, bool include_usage,
     const std::string &target_uri) {
-  bool success = rpc_service_->record_new_request(call_data, service_request_id,
-                                                  stream, model, include_usage);
-  if (!success) {
-    LOG(ERROR) << "rpc service add new request error: " << service_request_id;
-    call_data->finish_with_error("Internal runtime error.");
-    rpc_service_->finish_request(service_request_id);
-    return;
-  }
-
-  // async redistribute the request and wait the response
-  // TODO: optimize the thread pool to async mode.
-  auto channel_ptr = cached_channels_[target_uri];
-  // send request to prefill instance.
-  thread_pool_->schedule([this, service_request_id, stream,
-                          req_attachment = std::move(req_attachment), call_data,
-                          channel_ptr,
-                          target_uri = target_uri + "/v1/chat/completions"]() {
-    brpc::Controller redirect_cntl;
-    redirect_cntl.http_request().uri() = target_uri.c_str();
-    redirect_cntl.http_request().set_method(brpc::HTTP_METHOD_POST);
-    // redirect the input request content
-    redirect_cntl.request_attachment().append(req_attachment);
-
-    // Because `done'(last parameter) is NULL, this function waits until
-    // the response comes back or error occurs(including timeout).
-    channel_ptr->CallMethod(NULL, &redirect_cntl, NULL, NULL, NULL);
-    if (redirect_cntl.Failed()) {
-      LOG(ERROR) << "Redirect to instance error: " << redirect_cntl.ErrorText();
-      call_data->finish_with_error(redirect_cntl.ErrorText());
-      rpc_service_->finish_request(service_request_id);
-      return;
-    }
-
-    // TODO: consider finish status here? like only decode one token.
-    //
-    if (stream) {
-      if (!call_data->write(redirect_cntl.response_attachment().to_string())) {
-        LOG(ERROR) << "Write response to call_data failed";
-        rpc_service_->finish_request(service_request_id);
-      }
-    }
-    // non-stream, results will be sent by decode instance.
-  });
+  handle(call_data, req_attachment, service_request_id, stream,
+         model, include_usage, target_uri, "/v1/chat/completions");
 }
 
 void XllmHttpServiceImpl::post_serving(
@@ -305,6 +374,20 @@ void XllmHttpServiceImpl::post_serving(
   }
 }
 
+namespace {
+void handle_get_response(brpc::Controller* cntl, std::shared_ptr<CompletionCallData> call_data,
+                         google::protobuf::Closure* done) {
+  std::unique_ptr<brpc::Controller> cntl_guard(cntl);
+  std::unique_ptr<google::protobuf::Closure> done_guard(done);
+  if (cntl->Failed()) {
+    LOG(WARNING) << "Fail to send stream generation, " << cntl->ErrorText();
+    return;
+  }
+  call_data->write_and_finish(
+        cntl->response_attachment().to_string());
+}
+}
+
 void XllmHttpServiceImpl::get_serving(
     const std::string &serving_method,
     ::google::protobuf::RpcController *controller,
@@ -342,21 +425,22 @@ void XllmHttpServiceImpl::get_serving(
   target_uri += serving_method;
   thread_pool_->schedule([/*req_attachment, */ call_data, cntl, channel_ptr,
                           target_uri]() {
-    brpc::Controller redirect_cntl;
-    redirect_cntl.http_request().uri() = target_uri.c_str();
-    redirect_cntl.http_request().set_method(brpc::HTTP_METHOD_GET);
+    brpc::Controller* redirect_cntl = new brpc::Controller();
+    redirect_cntl->http_request().uri() = target_uri.c_str();
+    redirect_cntl->http_request().set_method(brpc::HTTP_METHOD_GET);
+
+    google::protobuf::Closure* done = brpc::NewCallback(
+        &handle_get_response, redirect_cntl, call_data, done);
 
     // Because `done'(last parameter) is NULL, this function waits until
     // the response comes back or error occurs(including timeout).
-    channel_ptr->CallMethod(NULL, &redirect_cntl, NULL, NULL, NULL);
-    if (redirect_cntl.Failed()) {
-      LOG(ERROR) << "Redirect to instance error: " << redirect_cntl.ErrorText();
-      call_data->finish_with_error(redirect_cntl.ErrorText());
-      return;
+    channel_ptr->CallMethod(NULL, redirect_cntl, NULL, NULL, done);
+    if (redirect_cntl->Failed()) {
+      LOG(ERROR) << "Redirect to instance error: " << redirect_cntl->ErrorText();
+      call_data->finish_with_error(redirect_cntl->ErrorText());
+      delete done;
+      delete redirect_cntl;
     }
-    call_data->write_and_finish(
-        redirect_cntl.response_attachment().to_string());
-    return;
   });
 }
 

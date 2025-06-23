@@ -3,6 +3,7 @@
 #include <brpc/closure_guard.h>
 
 #include "common/types.h"
+#include "common/utils.h"
 #include "rpc_service/service.h"
 #include "xllm/status.h"
 
@@ -37,6 +38,8 @@ grpc::StatusCode to_grpc_status_code(llm::StatusCode code) {
 } // namespace
 
 XllmRpcServiceImpl::XllmRpcServiceImpl(const RpcServiceConfig& config) {
+  enable_decode_response_to_service_ =
+      utils::get_bool_env("ENABLE_DECODE_RESPONSE_TO_SERVICE", false);
   instance_mgr_ = std::make_unique<InstanceMgr>(config);
 }
 
@@ -221,6 +224,10 @@ bool XllmRpcServiceImpl::record_new_request(std::shared_ptr<CompletionCallData> 
   return true;
 }
 
+ServiceConfig XllmRpcServiceImpl::get_config() {
+  return ServiceConfig(enable_decode_response_to_service_);
+}
+
 
 XllmRpcService::XllmRpcService(std::shared_ptr<XllmRpcServiceImpl> service)
     : xllm_service_(service) {
@@ -384,6 +391,16 @@ void XllmRpcService::Generations(
     resp->mutable_all_status()->Add()->set_ok(
         xllm_service_->handle_generation(request_output));
   }
+}
+
+void XllmRpcService::GetConfig(
+      google::protobuf::RpcController* cntl_base,
+      const proto::Empty* req,
+      proto::ServiceConfig* resp,
+      google::protobuf::Closure* done) {
+  brpc::ClosureGuard done_guard(done);
+  auto config = xllm_service_->get_config();
+  resp->set_enable_decode_response_to_service(config.enable_decode_response_to_service);
 }
 
 } // namespace xllm_service

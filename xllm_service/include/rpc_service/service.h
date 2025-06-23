@@ -17,6 +17,13 @@ namespace xllm_service {
 
 using OutputCallback = std::function<bool(llm::RequestOutput output)>;
 
+struct ServiceConfig {
+  ServiceConfig(bool decode_to_service)
+      : enable_decode_response_to_service(decode_to_service) {}
+
+  bool enable_decode_response_to_service = false;
+};
+
 class XllmRpcServiceImpl final {
  public:
   XllmRpcServiceImpl(const RpcServiceConfig& config);
@@ -29,6 +36,8 @@ class XllmRpcServiceImpl final {
                                      const InstanceMetaInfo& metainfo);
 
   InstanceMetaInfo get_instance_info(const std::string& instance_name);
+
+  ServiceConfig get_config();
 
   // methods for master
 
@@ -72,6 +81,21 @@ class XllmRpcServiceImpl final {
   size_t next_thread_idx = 0;
   std::mutex thread_map_mutex_;
 
+  // In disagg pd mode, we support receive generated token from
+  // prefill or from decode directly.
+  // 1.
+  // [service] ---req---> [prefill] ---req---> [decode]
+  // [service] <---first resp--- [prefill] ---first resp---> [decode]
+  // [service] <---resp--- [prefill] <---resp--- [decode]
+  //
+  // 2.
+  // [service] ---req---> [prefill] ---req---> [decode]
+  // [service] <---first resp-- [prefill] --first resp---> [decode]
+  // [service] <---resp-- [decode]
+  //
+  bool enable_decode_response_to_service_ = false;
+
+  // used when receive token from decode instance.
   ResponseHandler response_handler_;
 };
 
@@ -118,6 +142,12 @@ class XllmRpcService : public proto::XllmRpcService {
       google::protobuf::RpcController* cntl_base,
       const proto::DisaggStreamGenerations* req,
       proto::StatusSet* resp,
+      google::protobuf::Closure* done) override;
+
+  virtual void GetConfig(
+      google::protobuf::RpcController* cntl_base,
+      const proto::Empty* req,
+      proto::ServiceConfig* resp,
       google::protobuf::Closure* done) override;
 
  private:

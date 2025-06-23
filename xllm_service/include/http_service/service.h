@@ -68,6 +68,13 @@ class XllmHttpServiceImpl : public proto::XllmHttpService {
                     proto::HttpResponse* response,
                     ::google::protobuf::Closure* done);
 
+  template<typename T>
+  void handle(
+      std::shared_ptr<T> call_data,
+      const std::string &req_attachment, const std::string &service_request_id,
+      bool stream, const std::string &model, bool include_usage,
+      const std::string &target_uri, const std::string &method);
+
   void handle_v1_chat_completions(std::shared_ptr<ChatCallData> call_data,
                                   const std::string& req_attachment,
                                   const std::string& service_request_id,
@@ -103,6 +110,20 @@ class XllmHttpServiceImpl : public proto::XllmHttpService {
   std::unordered_map<std::string, brpc::Channel*> cached_channels_;
   std::unique_ptr<ThreadPool> thread_pool_;
   std::mutex channel_mutex_;
+
+  // In disagg pd mode, we support receive generated token from
+  // prefill or from decode directly.
+  // 1.
+  // [service] ---req---> [prefill] ---req---> [decode]
+  // [service] <---first resp--- [prefill] ---first resp---> [decode]
+  // [service] <---resp--- [prefill] <---resp--- [decode]
+  //
+  // 2.
+  // [service] ---req---> [prefill] ---req---> [decode]
+  // [service] <---first resp-- [prefill] --first resp---> [decode]
+  // [service] <---resp-- [decode]
+  //
+  bool enable_decode_response_to_service_ = false;
 };
 
 } // namespace xllm_service
