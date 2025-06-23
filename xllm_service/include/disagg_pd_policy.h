@@ -1,8 +1,8 @@
 #pragma once
 
 #include <mutex>
-#include <unordered_map>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "common/types.h"
@@ -19,7 +19,7 @@ class DisaggPdPolicy {
       reallocate_instances_type(/*params here*/) = 0;
 
   // Allocate prefill and decode pairs, return prefill -> [decode instances]
-  // Allow multiple decode instances for each prefill instance and 
+  // Allow multiple decode instances for each prefill instance and
   // multiple prefill instances for each decode instance
   virtual std::unordered_map<std::string, std::vector<std::string>>
       allocate_pd_pairs(/*params here*/) = 0;
@@ -51,11 +51,12 @@ class RoundRobinDisaggPdPolicy : public DisaggPdPolicy {
       reallocate_instances_type(/*params here*/) override;
   virtual std::unordered_map<std::string, std::vector<std::string>>
       allocate_pd_pairs(/*params here*/) override;
-  virtual InstancesPair select_instances_pair(bool only_prefill = false) override;
+  virtual InstancesPair select_instances_pair(
+      bool only_prefill = false) override;
 
  private:
   int next_prefill_idx_ = 0;
   int next_decode_idx_ = 0;
 };
 
-} // namespace xllm_service
+}  // namespace xllm_service

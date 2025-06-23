@@ -9,9 +9,9 @@
 #include "completion.pb.h"
 #include "instance_mgr.h"
 #include "response_handler.h"
-#include "xllm_rpc_service.pb.h"
 #include "xllm/output.h"
 #include "xllm/status.h"
+#include "xllm_rpc_service.pb.h"
 
 namespace xllm_service {
 
@@ -45,10 +45,11 @@ class XllmRpcServiceImpl final {
   // according the disagg pd policy (or some other policies.).
   InstancesPair select_instances_pair(bool only_prefill = false);
 
-  std::vector<std::string> get_static_decode_list(const std::string& prefill_name);
+  std::vector<std::string> get_static_decode_list(
+      const std::string& prefill_name);
 
  public:
-  // handle generations from prefill/decode instance 
+  // handle generations from prefill/decode instance
   bool handle_generation(const llm::RequestOutput& request_output);
 
   // register new requests from http service
@@ -76,7 +77,8 @@ class XllmRpcServiceImpl final {
   // use threadpool to handle all RequestOuputs queue
   static constexpr size_t kOutputTheadNum_ = 128;  // magic num
   ThreadPool output_threadpools_[kOutputTheadNum_];
-  // A request will be handled in the same thread to guarantee the token's order.
+  // A request will be handled in the same thread to guarantee the token's
+  // order.
   std::unordered_map<std::string, size_t> remote_requests_output_thread_map_;
   size_t next_thread_idx = 0;
   std::mutex thread_map_mutex_;
@@ -105,53 +107,45 @@ class XllmRpcService : public proto::XllmRpcService {
   explicit XllmRpcService(std::shared_ptr<XllmRpcServiceImpl> service);
   virtual ~XllmRpcService();
 
-  virtual void Hello(
-      google::protobuf::RpcController* cntl_base,
-      const proto::Empty* req,
-      proto::Status* resp,
-      google::protobuf::Closure* done) override;
+  virtual void Hello(google::protobuf::RpcController* cntl_base,
+                     const proto::Empty* req,
+                     proto::Status* resp,
+                     google::protobuf::Closure* done) override;
 
-  virtual void RegisterInstance(
-      google::protobuf::RpcController* cntl_base,
-      const proto::InstanceMetaInfo* req,
-      proto::StatusCode* resp,
-      google::protobuf::Closure* done) override;
+  virtual void RegisterInstance(google::protobuf::RpcController* cntl_base,
+                                const proto::InstanceMetaInfo* req,
+                                proto::StatusCode* resp,
+                                google::protobuf::Closure* done) override;
 
-  virtual void Heartbeat(
-      google::protobuf::RpcController* cntl_base,
-      const proto::HeartbeatRequest* req,
-      proto::Status* resp,
-      google::protobuf::Closure* done) override;
+  virtual void Heartbeat(google::protobuf::RpcController* cntl_base,
+                         const proto::HeartbeatRequest* req,
+                         proto::Status* resp,
+                         google::protobuf::Closure* done) override;
 
-  virtual void GetInstanceInfo(
-      google::protobuf::RpcController* cntl_base,
-      const proto::InstanceID* req,
-      proto::InstanceMetaInfo* resp,
-      google::protobuf::Closure* done) override;
+  virtual void GetInstanceInfo(google::protobuf::RpcController* cntl_base,
+                               const proto::InstanceID* req,
+                               proto::InstanceMetaInfo* resp,
+                               google::protobuf::Closure* done) override;
 
-  virtual void GetStaticDecodeList(
-      google::protobuf::RpcController* cntl_base,
-      const proto::InstanceID* req,
-      proto::InstanceIDs* resp,
-      google::protobuf::Closure* done) override;
+  virtual void GetStaticDecodeList(google::protobuf::RpcController* cntl_base,
+                                   const proto::InstanceID* req,
+                                   proto::InstanceIDs* resp,
+                                   google::protobuf::Closure* done) override;
 
+  // xllm service receive response from decode instance directly in disagg pd
+  // mode. This can eliminate the cost brought by forwarding through prefill.
+  virtual void Generations(google::protobuf::RpcController* cntl_base,
+                           const proto::DisaggStreamGenerations* req,
+                           proto::StatusSet* resp,
+                           google::protobuf::Closure* done) override;
 
-  // xllm service receive response from decode instance directly in disagg pd mode.
-  // This can eliminate the cost brought by forwarding through prefill.
-  virtual void Generations(
-      google::protobuf::RpcController* cntl_base,
-      const proto::DisaggStreamGenerations* req,
-      proto::StatusSet* resp,
-      google::protobuf::Closure* done) override;
-
-  virtual void GetConfig(
-      google::protobuf::RpcController* cntl_base,
-      const proto::Empty* req,
-      proto::ServiceConfig* resp,
-      google::protobuf::Closure* done) override;
+  virtual void GetConfig(google::protobuf::RpcController* cntl_base,
+                         const proto::Empty* req,
+                         proto::ServiceConfig* resp,
+                         google::protobuf::Closure* done) override;
 
  private:
   std::shared_ptr<XllmRpcServiceImpl> xllm_service_;
 };
 
-} // namespace xllm_service
+}  // namespace xllm_service

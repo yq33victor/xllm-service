@@ -2,13 +2,14 @@
 
 namespace xllm_service {
 
-bool ResponseHandler::send_delta_to_client(std::shared_ptr<ChatCallData> call_data,
-                                           std::unordered_set<size_t>* first_message_sent,
-                                           bool include_usage,
-                                           const std::string& request_id,
-                                           int64_t created_time,
-                                           const std::string& model,
-                                           const llm::RequestOutput& output) {
+bool ResponseHandler::send_delta_to_client(
+    std::shared_ptr<ChatCallData> call_data,
+    std::unordered_set<size_t>* first_message_sent,
+    bool include_usage,
+    const std::string& request_id,
+    int64_t created_time,
+    const std::string& model,
+    const llm::RequestOutput& output) {
   auto& response = call_data->response();
 
   // send delta to client
@@ -45,9 +46,11 @@ bool ResponseHandler::send_delta_to_client(std::shared_ptr<ChatCallData> call_da
       choice->set_index(index);
 
       // set_logprobs
-      if (seq_output.logprobs.has_value() && !seq_output.logprobs.value().empty()) {
+      if (seq_output.logprobs.has_value() &&
+          !seq_output.logprobs.value().empty()) {
         auto* proto_logprobs = choice->mutable_logprobs();
-        proto_logprobs->mutable_content()->Reserve(seq_output.logprobs.value().size());
+        proto_logprobs->mutable_content()->Reserve(
+            seq_output.logprobs.value().size());
         for (const auto& logprob : seq_output.logprobs.value()) {
           auto* logprob_proto = proto_logprobs->add_content();
           logprob_proto->set_token(logprob.token);
@@ -115,12 +118,13 @@ bool ResponseHandler::send_delta_to_client(std::shared_ptr<ChatCallData> call_da
   return true;
 }
 
-bool ResponseHandler::send_delta_to_client(std::shared_ptr<CompletionCallData> call_data,
-                                           bool include_usage,
-                                           const std::string& request_id,
-                                           int64_t created_time,
-                                           const std::string& model,
-                                           const llm::RequestOutput& output) {
+bool ResponseHandler::send_delta_to_client(
+    std::shared_ptr<CompletionCallData> call_data,
+    bool include_usage,
+    const std::string& request_id,
+    int64_t created_time,
+    const std::string& model,
+    const llm::RequestOutput& output) {
   auto& response = call_data->response();
 
   for (const auto& seq_output : output.outputs) {
@@ -136,7 +140,8 @@ bool ResponseHandler::send_delta_to_client(std::shared_ptr<CompletionCallData> c
       choice->set_text(seq_output.text);
 
       // set_logprobs
-      if (seq_output.logprobs.has_value() && !seq_output.logprobs.value().empty()) {
+      if (seq_output.logprobs.has_value() &&
+          !seq_output.logprobs.value().empty()) {
         auto* proto_logprobs = choice->mutable_logprobs();
         for (const auto& logprob : seq_output.logprobs.value()) {
           proto_logprobs->add_tokens(logprob.token);
@@ -195,11 +200,12 @@ bool ResponseHandler::send_delta_to_client(std::shared_ptr<CompletionCallData> c
   return true;
 }
 
-bool ResponseHandler::send_result_to_client(std::shared_ptr<ChatCallData> call_data,
-                                            const std::string& request_id,
-                                            int64_t created_time,
-                                            const std::string& model,
-                                            const llm::RequestOutput& req_output) {
+bool ResponseHandler::send_result_to_client(
+    std::shared_ptr<ChatCallData> call_data,
+    const std::string& request_id,
+    int64_t created_time,
+    const std::string& model,
+    const llm::RequestOutput& req_output) {
   auto& response = call_data->response();
   response.set_object("chat.completion");
   response.set_id(request_id);
@@ -215,7 +221,8 @@ bool ResponseHandler::send_result_to_client(std::shared_ptr<ChatCallData> call_d
     // set_logprobs
     if (output.logprobs.has_value() && !output.logprobs.value().empty()) {
       auto* proto_logprobs = choice->mutable_logprobs();
-      proto_logprobs->mutable_content()->Reserve(output.logprobs.value().size());
+      proto_logprobs->mutable_content()->Reserve(
+          output.logprobs.value().size());
       for (const auto& logprob : output.logprobs.value()) {
         auto* logprob_proto = proto_logprobs->add_content();
         logprob_proto->set_token(logprob.token);
@@ -255,11 +262,12 @@ bool ResponseHandler::send_result_to_client(std::shared_ptr<ChatCallData> call_d
   return call_data->write_and_finish(response);
 }
 
-bool ResponseHandler::send_result_to_client(std::shared_ptr<CompletionCallData> call_data,
-                                            const std::string& request_id,
-                                            int64_t created_time,
-                                            const std::string& model,
-                                            const llm::RequestOutput& req_output) {
+bool ResponseHandler::send_result_to_client(
+    std::shared_ptr<CompletionCallData> call_data,
+    const std::string& request_id,
+    int64_t created_time,
+    const std::string& model,
+    const llm::RequestOutput& req_output) {
   auto& response = call_data->response();
   response.set_object("text_completion");
   response.set_id(request_id);
@@ -302,4 +310,4 @@ bool ResponseHandler::send_result_to_client(std::shared_ptr<CompletionCallData> 
   return call_data->write_and_finish(response);
 }
 
-} // namespace xllm_service
+}  // namespace xllm_service

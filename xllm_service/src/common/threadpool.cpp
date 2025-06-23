@@ -1,7 +1,8 @@
+#include "common/threadpool.h"
+
 #include <thread>
 
 #include "common/concurrent_queue.h"
-#include "common/threadpool.h"
 
 namespace xllm_service {
 
@@ -42,4 +43,3 @@ void ThreadPool::internal_loop() {
 }
 
 }  // namespace xllm_service
-

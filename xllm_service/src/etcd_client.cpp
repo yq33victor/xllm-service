@@ -1,6 +1,7 @@
 #include "etcd_client.h"
 
 #include <glog/logging.h>
+
 #include <nlohmann/json.hpp>
 
 namespace xllm_service {
@@ -9,7 +10,8 @@ EtcdClient::EtcdClient(const std::string& etcd_addr)
     : client_(etcd_addr), etcd_addr_(etcd_addr) {
   auto response = client_.put("XLLM_PING", "PING");
   if (!response.is_ok()) {
-    LOG(FATAL) << "etcd connect to etcd server failed: " << response.error_message();
+    LOG(FATAL) << "etcd connect to etcd server failed: "
+               << response.error_message();
   }
 }
 
@@ -27,17 +29,20 @@ bool EtcdClient::get(const std::string& key, InstanceIdentityInfo& value) {
     value.instance_addr = json_value.at("instance_addr").get<std::string>();
     value.instance_type = json_value.at("instance_type").get<int8_t>();
   } catch (const std::exception& e) {
-    LOG(ERROR) << "etcd get " << key << " failed: json parse error: " << e.what();
+    LOG(ERROR) << "etcd get " << key
+               << " failed: json parse error: " << e.what();
     return false;
   }
 
   return true;
 }
 
-bool EtcdClient::get_prefix(const std::string& key_prefix, std::vector<InstanceIdentityInfo>& values) {
+bool EtcdClient::get_prefix(const std::string& key_prefix,
+                            std::vector<InstanceIdentityInfo>& values) {
   auto response = client_.ls(key_prefix);
   if (!response.is_ok()) {
-    LOG(ERROR) << "etcd get " << key_prefix << " failed: " << response.error_message();
+    LOG(ERROR) << "etcd get " << key_prefix
+               << " failed: " << response.error_message();
     return false;
   }
   for (const auto& v : response.values()) {
@@ -47,9 +52,10 @@ bool EtcdClient::get_prefix(const std::string& key_prefix, std::vector<InstanceI
       nlohmann::json json_value = nlohmann::json::parse(json_str);
       value.instance_addr = json_value.at("instance_addr").get<std::string>();
       value.instance_type = json_value.at("instance_type").get<int8_t>();
-      values.emplace_back(value);  
+      values.emplace_back(value);
     } catch (const std::exception& e) {
-      LOG(ERROR) << "etcd get " << key_prefix << " failed: json parse error: " << e.what();
+      LOG(ERROR) << "etcd get " << key_prefix
+                 << " failed: json parse error: " << e.what();
       return false;
     }
   }
@@ -57,7 +63,8 @@ bool EtcdClient::get_prefix(const std::string& key_prefix, std::vector<InstanceI
   return true;
 }
 
-bool EtcdClient::set(const std::string& key, const InstanceIdentityInfo& value) {
+bool EtcdClient::set(const std::string& key,
+                     const InstanceIdentityInfo& value) {
   std::string json_str;
   try {
     nlohmann::json json_value;
@@ -65,7 +72,8 @@ bool EtcdClient::set(const std::string& key, const InstanceIdentityInfo& value) 
     json_value["instance_type"] = value.instance_type;
     json_str = json_value.dump();
   } catch (const std::exception& e) {
-    LOG(ERROR) << "etcd set " << key << " failed: json dump error: " << e.what();
+    LOG(ERROR) << "etcd set " << key
+               << " failed: json dump error: " << e.what();
     return false;
   }
 
@@ -88,4 +96,4 @@ bool EtcdClient::rm(const std::string& key) {
   return true;
 }
 
-} // namespace xllm_service
+}  // namespace xllm_service

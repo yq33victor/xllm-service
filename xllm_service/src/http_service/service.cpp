@@ -1,8 +1,11 @@
+#include "http_service/service.h"
+
 #include <absl/time/clock.h>
 #include <absl/time/time.h>
 #include <brpc/controller.h>
 #include <brpc/progressive_reader.h>
 #include <glog/logging.h>
+
 #include <nlohmann/json.hpp>
 
 #include "chat.pb.h"
@@ -10,7 +13,6 @@
 #include "common/closure_guard.h"
 #include "common/utils.h"
 #include "completion.pb.h"
-#include "http_service/service.h"
 #include "rpc_service/service.h"
 #include "xllm/uuid.h"
 
@@ -18,7 +20,7 @@ namespace xllm_service {
 
 namespace {
 thread_local llm::ShortUUID short_uuid;
-std::string generate_service_request_id(const std::string &method) {
+std::string generate_service_request_id(const std::string& method) {
   std::stringstream ss;
   ss << method << "-";
   ss << std::this_thread::get_id();
@@ -26,11 +28,11 @@ std::string generate_service_request_id(const std::string &method) {
   ss << short_uuid.random();
   return ss.str();
 }
-} // namespace
+}  // namespace
 
 XllmHttpServiceImpl::XllmHttpServiceImpl(
     std::shared_ptr<XllmRpcServiceImpl> rpc_service,
-    const HttpServiceConfig &config)
+    const HttpServiceConfig& config)
     : config_(config), rpc_service_(rpc_service) {
   enable_decode_response_to_service_ =
       utils::get_bool_env("ENABLE_DECODE_RESPONSE_TO_SERVICE", false);
@@ -38,7 +40,7 @@ XllmHttpServiceImpl::XllmHttpServiceImpl(
   thread_pool_ = std::make_unique<ThreadPool>(config_.num_threads);
 }
 
-XllmHttpServiceImpl::XllmHttpServiceImpl(const HttpServiceConfig &config)
+XllmHttpServiceImpl::XllmHttpServiceImpl(const HttpServiceConfig& config)
     : config_(config) {
   initialized_ = true;
   thread_pool_ = std::make_unique<ThreadPool>(config_.num_threads);
@@ -46,10 +48,10 @@ XllmHttpServiceImpl::XllmHttpServiceImpl(const HttpServiceConfig &config)
 
 XllmHttpServiceImpl::~XllmHttpServiceImpl() {}
 
-bool XllmHttpServiceImpl::create_channel(const std::string &target_uri) {
+bool XllmHttpServiceImpl::create_channel(const std::string& target_uri) {
   std::lock_guard<std::mutex> guard(channel_mutex_);
   if (cached_channels_.find(target_uri) == cached_channels_.end()) {
-    brpc::Channel *channel = new brpc::Channel();
+    brpc::Channel* channel = new brpc::Channel();
     brpc::ChannelOptions options;
     // Add to params
     options.protocol = "http";
@@ -96,10 +98,10 @@ std::string XllmHttpServiceImpl::get_redirect_uri(bool only_prefill) {
   return target_instance_addr;
 }
 
-void XllmHttpServiceImpl::Hello(::google::protobuf::RpcController *controller,
-                                const proto::HttpHelloRequest *request,
-                                proto::HttpHelloResponse *response,
-                                ::google::protobuf::Closure *done) {
+void XllmHttpServiceImpl::Hello(::google::protobuf::RpcController* controller,
+                                const proto::HttpHelloRequest* request,
+                                proto::HttpHelloResponse* response,
+                                ::google::protobuf::Closure* done) {
   assert(initialized_);
   brpc::ClosureGuard done_guard(done);
   if (!request || !response || !controller) {
@@ -113,20 +115,22 @@ void XllmHttpServiceImpl::Hello(::google::protobuf::RpcController *controller,
 }
 
 namespace {
-template<typename T>
-void handle_non_stream_response(brpc::Controller* cntl, std::shared_ptr<T> call_data) {
+template <typename T>
+void handle_non_stream_response(brpc::Controller* cntl,
+                                std::shared_ptr<T> call_data) {
   std::unique_ptr<brpc::Controller> cntl_guard(cntl);
   if (cntl->Failed()) {
     LOG(WARNING) << "Fail to send stream generation, " << cntl->ErrorText();
     return;
   }
 
-  call_data->write_and_finish(
-        cntl->response_attachment().to_string());
+  call_data->write_and_finish(cntl->response_attachment().to_string());
 }
 
-template<typename T>
-void handle_first_response(brpc::Controller* cntl, std::shared_ptr<T> call_data, bool stream) {
+template <typename T>
+void handle_first_response(brpc::Controller* cntl,
+                           std::shared_ptr<T> call_data,
+                           bool stream) {
   std::unique_ptr<brpc::Controller> cntl_guard(cntl);
   if (cntl->Failed()) {
     LOG(WARNING) << "Fail to send stream generation, " << cntl->ErrorText();
@@ -139,16 +143,14 @@ void handle_first_response(brpc::Controller* cntl, std::shared_ptr<T> call_data,
   // non-stream, all generated tokens will be sent from decode via rpc service.
 }
 
-template<typename T>
+template <typename T>
 class CustomProgressiveReader : public brpc::ProgressiveReader {
  public:
   explicit CustomProgressiveReader(brpc::Controller* redirect_cntl,
                                    std::shared_ptr<T> call_data)
       : redirect_cntl_(redirect_cntl), call_data_(call_data) {}
 
-  virtual ~CustomProgressiveReader() {
-    delete redirect_cntl_;
-  }
+  virtual ~CustomProgressiveReader() { delete redirect_cntl_; }
 
   // Called when one part was read.
   // Error returned is treated as *permanent* and the socket where the
@@ -166,26 +168,27 @@ class CustomProgressiveReader : public brpc::ProgressiveReader {
   // - otherwise: socket was broken or OnReadOnePart() failed.
   // This method will be called once and only once. No other methods will
   // be called after. User can release the memory of this object inside.
-  virtual void OnEndOfMessage(const butil::Status& status) {
-    delete this;
-  }
+  virtual void OnEndOfMessage(const butil::Status& status) { delete this; }
 
  private:
   brpc::Controller* redirect_cntl_ = nullptr;
   std::shared_ptr<T> call_data_;
 };
-}
+}  // namespace
 
-template<typename T>
-void XllmHttpServiceImpl::handle(
-    std::shared_ptr<T> call_data,
-    const std::string &req_attachment, const std::string &service_request_id,
-    bool stream, const std::string &model, bool include_usage,
-    const std::string &target_uri, const std::string &method) {
+template <typename T>
+void XllmHttpServiceImpl::handle(std::shared_ptr<T> call_data,
+                                 const std::string& req_attachment,
+                                 const std::string& service_request_id,
+                                 bool stream,
+                                 const std::string& model,
+                                 bool include_usage,
+                                 const std::string& target_uri,
+                                 const std::string& method) {
   // record request when enable_decode_response_to_service.
   if (enable_decode_response_to_service_) {
-    bool success = rpc_service_->record_new_request(call_data, service_request_id,
-                                                    stream, model, include_usage);
+    bool success = rpc_service_->record_new_request(
+        call_data, service_request_id, stream, model, include_usage);
     if (!success) {
       LOG(ERROR) << "rpc service add new request error: " << service_request_id;
       call_data->finish_with_error("Internal runtime error.");
@@ -198,8 +201,11 @@ void XllmHttpServiceImpl::handle(
   // TODO: optimize the thread pool to async mode.
   auto channel_ptr = cached_channels_[target_uri];
   // send request to prefill instance.
-  thread_pool_->schedule([this, service_request_id, stream,
-                          req_attachment = std::move(req_attachment), call_data,
+  thread_pool_->schedule([this,
+                          service_request_id,
+                          stream,
+                          req_attachment = std::move(req_attachment),
+                          call_data,
                           channel_ptr,
                           target_uri = target_uri + method]() {
     brpc::Controller* redirect_cntl = new brpc::Controller();
@@ -216,7 +222,8 @@ void XllmHttpServiceImpl::handle(
           &handle_first_response<T>, redirect_cntl, call_data, stream);
       channel_ptr->CallMethod(NULL, redirect_cntl, NULL, NULL, done);
       if (redirect_cntl->Failed()) {
-        LOG(ERROR) << "Redirect to instance error: " << redirect_cntl->ErrorText();
+        LOG(ERROR) << "Redirect to instance error: "
+                   << redirect_cntl->ErrorText();
         call_data->finish_with_error(redirect_cntl->ErrorText());
         rpc_service_->finish_request(service_request_id);
         delete done;
@@ -236,7 +243,8 @@ void XllmHttpServiceImpl::handle(
       // the response comes back or error occurs(including timeout).
       channel_ptr->CallMethod(NULL, redirect_cntl, NULL, NULL, NULL);
       if (redirect_cntl->Failed()) {
-        LOG(ERROR) << "Redirect to instance error: " << redirect_cntl->ErrorText();
+        LOG(ERROR) << "Redirect to instance error: "
+                   << redirect_cntl->ErrorText();
         call_data->finish_with_error(redirect_cntl->ErrorText());
         delete redirect_cntl;
         return;
@@ -249,7 +257,8 @@ void XllmHttpServiceImpl::handle(
           &handle_non_stream_response<T>, redirect_cntl, call_data);
       channel_ptr->CallMethod(NULL, redirect_cntl, NULL, NULL, done);
       if (redirect_cntl->Failed()) {
-        LOG(ERROR) << "Redirect to instance error: " << redirect_cntl->ErrorText();
+        LOG(ERROR) << "Redirect to instance error: "
+                   << redirect_cntl->ErrorText();
         call_data->finish_with_error(redirect_cntl->ErrorText());
         delete done;
         delete redirect_cntl;
@@ -261,30 +270,49 @@ void XllmHttpServiceImpl::handle(
 
 void XllmHttpServiceImpl::handle_v1_completions(
     std::shared_ptr<CompletionCallData> call_data,
-    const std::string &req_attachment, const std::string &service_request_id,
-    bool stream, const std::string &model, bool include_usage,
-    const std::string &target_uri) {
-  handle(call_data, req_attachment, service_request_id, stream,
-         model, include_usage, target_uri, "/v1/completions");
+    const std::string& req_attachment,
+    const std::string& service_request_id,
+    bool stream,
+    const std::string& model,
+    bool include_usage,
+    const std::string& target_uri) {
+  handle(call_data,
+         req_attachment,
+         service_request_id,
+         stream,
+         model,
+         include_usage,
+         target_uri,
+         "/v1/completions");
 }
 
 void XllmHttpServiceImpl::handle_v1_chat_completions(
-    std::shared_ptr<ChatCallData> call_data, const std::string &req_attachment,
-    const std::string &service_request_id, bool stream,
-    const std::string &model, bool include_usage,
-    const std::string &target_uri) {
-  handle(call_data, req_attachment, service_request_id, stream,
-         model, include_usage, target_uri, "/v1/chat/completions");
+    std::shared_ptr<ChatCallData> call_data,
+    const std::string& req_attachment,
+    const std::string& service_request_id,
+    bool stream,
+    const std::string& model,
+    bool include_usage,
+    const std::string& target_uri) {
+  handle(call_data,
+         req_attachment,
+         service_request_id,
+         stream,
+         model,
+         include_usage,
+         target_uri,
+         "/v1/chat/completions");
 }
 
 void XllmHttpServiceImpl::post_serving(
-    const std::string &serving_method,
-    ::google::protobuf::RpcController *controller,
-    const proto::HttpRequest *request, proto::HttpResponse *response,
-    ::google::protobuf::Closure *done) {
+    const std::string& serving_method,
+    ::google::protobuf::RpcController* controller,
+    const proto::HttpRequest* request,
+    proto::HttpResponse* response,
+    ::google::protobuf::Closure* done) {
   assert(initialized_);
   ClosureGuard done_guard(done);
-  auto cntl = reinterpret_cast<brpc::Controller *>(controller);
+  auto cntl = reinterpret_cast<brpc::Controller*>(controller);
 
   if (!request || !response || !controller) {
     LOG(ERROR) << "brpc request | respose | controller is null";
@@ -295,7 +323,7 @@ void XllmHttpServiceImpl::post_serving(
   nlohmann::json json_value;
   try {
     json_value = nlohmann::json::parse(cntl->request_attachment().to_string());
-  } catch (const std::exception &e) {
+  } catch (const std::exception& e) {
     std::stringstream ss;
     ss << "Json parse request failed, error: " << e.what() << std::endl;
     LOG(ERROR) << ss.str();
@@ -306,7 +334,7 @@ void XllmHttpServiceImpl::post_serving(
   if (json_value.contains("stream")) {
     try {
       stream = json_value.at("stream").get<bool>();
-    } catch (const std::exception &e) {
+    } catch (const std::exception& e) {
       LOG(ERROR)
           << "Invalid args(stream) type in request, required bool type value.";
       cntl->SetFailed(
@@ -320,11 +348,12 @@ void XllmHttpServiceImpl::post_serving(
     try {
       include_usage =
           json_value["stream_options"].at("include_usage").get<bool>();
-    } catch (const std::exception &e) {
+    } catch (const std::exception& e) {
       LOG(ERROR) << "Invalid args(include_usage) type in request, required "
                     "bool type value.";
-      cntl->SetFailed("Invalid args(include_usage) type in request, required "
-                      "bool type value.");
+      cntl->SetFailed(
+          "Invalid args(include_usage) type in request, required "
+          "bool type value.");
       return;
     }
   }
@@ -357,16 +386,26 @@ void XllmHttpServiceImpl::post_serving(
             arena);
     auto call_data = std::make_shared<CompletionCallData>(
         cntl, stream, done_guard.release(), resp_pb);
-    handle_v1_completions(call_data, req_attachment, service_request_id, stream,
-                          model, include_usage, target_uri);
+    handle_v1_completions(call_data,
+                          req_attachment,
+                          service_request_id,
+                          stream,
+                          model,
+                          include_usage,
+                          target_uri);
   } else if (serving_method == "/v1/chat/completions") {
     auto arena = response->GetArena();
     auto resp_pb =
         google::protobuf::Arena::CreateMessage<llm::proto::ChatResponse>(arena);
     auto call_data = std::make_shared<ChatCallData>(
         cntl, stream, done_guard.release(), resp_pb);
-    handle_v1_chat_completions(call_data, req_attachment, service_request_id,
-                               stream, model, include_usage, target_uri);
+    handle_v1_chat_completions(call_data,
+                               req_attachment,
+                               service_request_id,
+                               stream,
+                               model,
+                               include_usage,
+                               target_uri);
   } else {
     LOG(ERROR) << "Not supported method: " << serving_method;
     cntl->SetFailed("Not supported method: " + serving_method);
@@ -375,7 +414,8 @@ void XllmHttpServiceImpl::post_serving(
 }
 
 namespace {
-void handle_get_response(brpc::Controller* cntl, std::shared_ptr<CompletionCallData> call_data,
+void handle_get_response(brpc::Controller* cntl,
+                         std::shared_ptr<CompletionCallData> call_data,
                          google::protobuf::Closure* done) {
   std::unique_ptr<brpc::Controller> cntl_guard(cntl);
   std::unique_ptr<google::protobuf::Closure> done_guard(done);
@@ -383,19 +423,19 @@ void handle_get_response(brpc::Controller* cntl, std::shared_ptr<CompletionCallD
     LOG(WARNING) << "Fail to send stream generation, " << cntl->ErrorText();
     return;
   }
-  call_data->write_and_finish(
-        cntl->response_attachment().to_string());
+  call_data->write_and_finish(cntl->response_attachment().to_string());
 }
-}
+}  // namespace
 
 void XllmHttpServiceImpl::get_serving(
-    const std::string &serving_method,
-    ::google::protobuf::RpcController *controller,
-    const proto::HttpRequest *request, proto::HttpResponse *response,
-    ::google::protobuf::Closure *done) {
+    const std::string& serving_method,
+    ::google::protobuf::RpcController* controller,
+    const proto::HttpRequest* request,
+    proto::HttpResponse* response,
+    ::google::protobuf::Closure* done) {
   assert(initialized_);
   ClosureGuard done_guard(done);
-  auto cntl = reinterpret_cast<brpc::Controller *>(controller);
+  auto cntl = reinterpret_cast<brpc::Controller*>(controller);
 
   if (!request || !response || !controller) {
     LOG(ERROR) << "brpc request | respose | controller is null";
@@ -423,60 +463,64 @@ void XllmHttpServiceImpl::get_serving(
 
   auto channel_ptr = cached_channels_[target_uri];
   target_uri += serving_method;
-  thread_pool_->schedule([/*req_attachment, */ call_data, cntl, channel_ptr,
-                          target_uri]() {
-    brpc::Controller* redirect_cntl = new brpc::Controller();
-    redirect_cntl->http_request().uri() = target_uri.c_str();
-    redirect_cntl->http_request().set_method(brpc::HTTP_METHOD_GET);
+  thread_pool_->schedule(
+      [/*req_attachment, */ call_data, cntl, channel_ptr, target_uri]() {
+        brpc::Controller* redirect_cntl = new brpc::Controller();
+        redirect_cntl->http_request().uri() = target_uri.c_str();
+        redirect_cntl->http_request().set_method(brpc::HTTP_METHOD_GET);
 
-    google::protobuf::Closure* done = brpc::NewCallback(
-        &handle_get_response, redirect_cntl, call_data, done);
+        google::protobuf::Closure* done = brpc::NewCallback(
+            &handle_get_response, redirect_cntl, call_data, done);
 
-    // Because `done'(last parameter) is NULL, this function waits until
-    // the response comes back or error occurs(including timeout).
-    channel_ptr->CallMethod(NULL, redirect_cntl, NULL, NULL, done);
-    if (redirect_cntl->Failed()) {
-      LOG(ERROR) << "Redirect to instance error: " << redirect_cntl->ErrorText();
-      call_data->finish_with_error(redirect_cntl->ErrorText());
-      delete done;
-      delete redirect_cntl;
-    }
-  });
+        // Because `done'(last parameter) is NULL, this function waits until
+        // the response comes back or error occurs(including timeout).
+        channel_ptr->CallMethod(NULL, redirect_cntl, NULL, NULL, done);
+        if (redirect_cntl->Failed()) {
+          LOG(ERROR) << "Redirect to instance error: "
+                     << redirect_cntl->ErrorText();
+          call_data->finish_with_error(redirect_cntl->ErrorText());
+          delete done;
+          delete redirect_cntl;
+        }
+      });
 }
 
 void XllmHttpServiceImpl::Completions(
-    ::google::protobuf::RpcController *controller,
-    const proto::HttpRequest *request, proto::HttpResponse *response,
-    ::google::protobuf::Closure *done) {
+    ::google::protobuf::RpcController* controller,
+    const proto::HttpRequest* request,
+    proto::HttpResponse* response,
+    ::google::protobuf::Closure* done) {
   post_serving("/v1/completions", controller, request, response, done);
 }
 
 void XllmHttpServiceImpl::ChatCompletions(
-    ::google::protobuf::RpcController *controller,
-    const proto::HttpRequest *request, proto::HttpResponse *response,
-    ::google::protobuf::Closure *done) {
+    ::google::protobuf::RpcController* controller,
+    const proto::HttpRequest* request,
+    proto::HttpResponse* response,
+    ::google::protobuf::Closure* done) {
   post_serving("/v1/chat/completions", controller, request, response, done);
 }
 
 void XllmHttpServiceImpl::Embeddings(
-    ::google::protobuf::RpcController *controller,
-    const proto::HttpRequest *request, proto::HttpResponse *response,
-    ::google::protobuf::Closure *done) {
+    ::google::protobuf::RpcController* controller,
+    const proto::HttpRequest* request,
+    proto::HttpResponse* response,
+    ::google::protobuf::Closure* done) {
   post_serving("/v1/embeddings", controller, request, response, done);
 }
 
-void XllmHttpServiceImpl::Models(::google::protobuf::RpcController *controller,
-                                 const proto::HttpRequest *request,
-                                 proto::HttpResponse *response,
-                                 ::google::protobuf::Closure *done) {
+void XllmHttpServiceImpl::Models(::google::protobuf::RpcController* controller,
+                                 const proto::HttpRequest* request,
+                                 proto::HttpResponse* response,
+                                 ::google::protobuf::Closure* done) {
   get_serving("/v1/models", controller, request, response, done);
 }
 
-void XllmHttpServiceImpl::Metrics(::google::protobuf::RpcController *controller,
-                                  const proto::HttpRequest *request,
-                                  proto::HttpResponse *response,
-                                  ::google::protobuf::Closure *done) {
+void XllmHttpServiceImpl::Metrics(::google::protobuf::RpcController* controller,
+                                  const proto::HttpRequest* request,
+                                  proto::HttpResponse* response,
+                                  ::google::protobuf::Closure* done) {
   get_serving("/metrics", controller, request, response, done);
 }
 
-} // namespace xllm_service
+}  // namespace xllm_service

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <absl/synchronization/mutex.h>
+
 #include <queue>
 
 #if __has_attribute(guarded_by)
@@ -81,4 +82,3 @@ class ConcurrentQueue {
 };
 
 }  // namespace xllm_service
-

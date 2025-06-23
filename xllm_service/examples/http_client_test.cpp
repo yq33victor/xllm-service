@@ -1,27 +1,32 @@
 #include <brpc/channel.h>
-#include <future>
 #include <gflags/gflags.h>
+
+#include <future>
 #include <iostream>
 
 // use stream=false or true
 DEFINE_string(prompt,
-    "{\"model\": \"Qwen-7B-Chat\", \
+              "{\"model\": \"Qwen-7B-Chat\", \
     \"prompt\": \"hello, who are you. \", \
     \"max_tokens\": 10, \
     \"temperature\": 0.7, \
-    \"stream\": false}", "POST this data to the http server");
+    \"stream\": false}",
+              "POST this data to the http server");
 DEFINE_string(prompt_streaming,
-    "{\"model\": \"Qwen-7B-Chat\", \
+              "{\"model\": \"Qwen-7B-Chat\", \
     \"prompt\": \"hello, who are you. \", \
     \"max_tokens\": 10, \
     \"temperature\": 0.7, \
-    \"stream\": true}", "POST this data to the http server");
+    \"stream\": true}",
+              "POST this data to the http server");
 DEFINE_string(load_balancer, "", "The algorithm for load balancing");
 DEFINE_int32(timeout_ms, 2000, "RPC timeout in milliseconds");
-DEFINE_int32(max_retry, 3, "Max retries(not including the first RPC)"); 
+DEFINE_int32(max_retry, 3, "Max retries(not including the first RPC)");
 DEFINE_string(protocol, "http", "Client-side protocol");
 DEFINE_int32(num_threads, 32, "Number of threads to process requests");
-DEFINE_int32(max_concurrency, 128, "Limit number of requests processed in parallel");
+DEFINE_int32(max_concurrency,
+             128,
+             "Limit number of requests processed in parallel");
 DEFINE_string(url, "http://127.0.0.1:9999/v1/completions", "Server uri.");
 
 namespace brpc {
@@ -32,16 +37,16 @@ int main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   auto url = FLAGS_url;
-   
-  // A Channel represents a communication line to a Server. Notice that 
+
+  // A Channel represents a communication line to a Server. Notice that
   // Channel is thread-safe and can be shared by all threads in your program.
   brpc::Channel channel;
   brpc::ChannelOptions options;
   options.protocol = FLAGS_protocol;
-  options.timeout_ms = FLAGS_timeout_ms/*milliseconds*/;
+  options.timeout_ms = FLAGS_timeout_ms /*milliseconds*/;
   options.max_retry = FLAGS_max_retry;
 
-  // Initialize the channel, NULL means using default options. 
+  // Initialize the channel, NULL means using default options.
   // options, see `brpc/channel.h'.
   if (channel.Init(url.c_str(), FLAGS_load_balancer.c_str(), &options) != 0) {
     std::cerr << "Fail to initialize channel." << std::endl;
@@ -107,7 +112,7 @@ int main(int argc, char* argv[]) {
     // on stack.
     brpc::Controller cntl;
 
-    cntl.http_request().uri() = FLAGS_url.c_str(); //url;
+    cntl.http_request().uri() = FLAGS_url.c_str();  // url;
     if (!FLAGS_prompt_streaming.empty()) {
       cntl.http_request().set_method(brpc::HTTP_METHOD_POST);
       cntl.request_attachment().append(FLAGS_prompt_streaming);
@@ -131,9 +136,9 @@ int main(int argc, char* argv[]) {
 
   future_result.get();
 
-  //while (true) {
-  //  sleep(1);
-  //} 
+  // while (true) {
+  //   sleep(1);
+  // }
 
   return 0;
 }

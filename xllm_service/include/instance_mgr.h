@@ -28,14 +28,16 @@ class InstanceMgr {
   // according the disagg pd policy (or some other policies.).
   InstancesPair select_instances_pair(bool only_prefill = false);
 
-  std::vector<std::string> get_static_decode_list(const std::string& instance_name);
+  std::vector<std::string> get_static_decode_list(
+      const std::string& instance_name);
 
  private:
   void internal_init();
   // save instance metainfo to etcd
   void save_persistence_metainfo(const InstanceMetaInfo& metainfo);
   // delete instance metainfo from etcd
-  void delete_persistence_metainfo(const std::vector<std::string>& instance_names);
+  void delete_persistence_metainfo(
+      const std::vector<std::string>& instance_names);
   void detect_disconnected_instances();
   void update_instance_timestamp(const std::string& inst_name);
 
@@ -52,4 +54,4 @@ class InstanceMgr {
   std::unique_ptr<EtcdClient> etcd_client_;
 };
 
-} // namespace xllm_service
+}  // namespace xllm_service

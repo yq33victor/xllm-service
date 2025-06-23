@@ -36,4 +36,3 @@ class ThreadPool final {
 };
 
 }  // namespace xllm_service
-

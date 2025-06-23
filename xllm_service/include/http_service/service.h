@@ -1,20 +1,21 @@
 #pragma once
 
 #include <brpc/channel.h>
+
 #include <iostream>
 #include <mutex>
 
 #include "chat.pb.h"
 #include "common/call_data.h"
-#include "common/types.h"
 #include "common/threadpool.h"
+#include "common/types.h"
 #include "completion.pb.h"
 #include "xllm_http_service.pb.h"
 
 namespace xllm_service {
 
-using CompletionCallData =
-    StreamCallData<llm::proto::CompletionRequest, llm::proto::CompletionResponse>;
+using CompletionCallData = StreamCallData<llm::proto::CompletionRequest,
+                                          llm::proto::CompletionResponse>;
 
 using ChatCallData =
     StreamCallData<llm::proto::ChatRequest, llm::proto::ChatResponse>;
@@ -68,12 +69,15 @@ class XllmHttpServiceImpl : public proto::XllmHttpService {
                     proto::HttpResponse* response,
                     ::google::protobuf::Closure* done);
 
-  template<typename T>
-  void handle(
-      std::shared_ptr<T> call_data,
-      const std::string &req_attachment, const std::string &service_request_id,
-      bool stream, const std::string &model, bool include_usage,
-      const std::string &target_uri, const std::string &method);
+  template <typename T>
+  void handle(std::shared_ptr<T> call_data,
+              const std::string& req_attachment,
+              const std::string& service_request_id,
+              bool stream,
+              const std::string& model,
+              bool include_usage,
+              const std::string& target_uri,
+              const std::string& method);
 
   void handle_v1_chat_completions(std::shared_ptr<ChatCallData> call_data,
                                   const std::string& req_attachment,
@@ -126,4 +130,4 @@ class XllmHttpServiceImpl : public proto::XllmHttpService {
   bool enable_decode_response_to_service_ = false;
 };
 
-} // namespace xllm_service
+}  // namespace xllm_service

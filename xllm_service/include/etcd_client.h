@@ -18,7 +18,8 @@ class EtcdClient {
 
   bool get(const std::string& key, InstanceIdentityInfo& value);
   // get all keys with prefix
-  bool get_prefix(const std::string& key_prefix, std::vector<InstanceIdentityInfo>& values);
+  bool get_prefix(const std::string& key_prefix,
+                  std::vector<InstanceIdentityInfo>& values);
   bool set(const std::string& key, const InstanceIdentityInfo& value);
   bool rm(const std::string& key);
 
@@ -27,4 +28,4 @@ class EtcdClient {
   std::string etcd_addr_;
 };
 
-} // namespace xllm_service
+}  // namespace xllm_service

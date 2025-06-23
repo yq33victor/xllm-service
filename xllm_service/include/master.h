@@ -1,6 +1,7 @@
 #pragma once
 
 #include <brpc/server.h>
+
 #include <thread>
 
 #include "http_service/service.h"
@@ -56,4 +57,4 @@ class Master {
   std::unique_ptr<std::thread> rpc_server_thread_;
 };
 
-} // namespace xllm_service
+}  // namespace xllm_service

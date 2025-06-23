@@ -1,10 +1,11 @@
+#include "rpc_service/service.h"
+
 #include <absl/time/clock.h>
 #include <absl/time/time.h>
 #include <brpc/closure_guard.h>
 
 #include "common/types.h"
 #include "common/utils.h"
-#include "rpc_service/service.h"
 #include "xllm/status.h"
 
 namespace xllm_service {
@@ -35,7 +36,7 @@ grpc::StatusCode to_grpc_status_code(llm::StatusCode code) {
   }
   return grpc::StatusCode::UNKNOWN;
 }
-} // namespace
+}  // namespace
 
 XllmRpcServiceImpl::XllmRpcServiceImpl(const RpcServiceConfig& config) {
   enable_decode_response_to_service_ =
@@ -43,20 +44,21 @@ XllmRpcServiceImpl::XllmRpcServiceImpl(const RpcServiceConfig& config) {
   instance_mgr_ = std::make_unique<InstanceMgr>(config);
 }
 
-XllmRpcServiceImpl::~XllmRpcServiceImpl() {
-}
+XllmRpcServiceImpl::~XllmRpcServiceImpl() {}
 
 ErrorCode XllmRpcServiceImpl::heartbeat(const std::string& instance_name) {
   return instance_mgr_->heartbeat(instance_name);
 }
 
-ErrorCode XllmRpcServiceImpl::register_instance(const std::string& instance_name,
-                                                const InstanceMetaInfo& metainfo) {
+ErrorCode XllmRpcServiceImpl::register_instance(
+    const std::string& instance_name,
+    const InstanceMetaInfo& metainfo) {
   return instance_mgr_->register_instance(instance_name, metainfo);
 }
 
-ErrorCode XllmRpcServiceImpl::update_instance_metainfo(const std::string& instance_name,
-                                                       const InstanceMetaInfo& metainfo) {
+ErrorCode XllmRpcServiceImpl::update_instance_metainfo(
+    const std::string& instance_name,
+    const InstanceMetaInfo& metainfo) {
   return instance_mgr_->update_instance_metainfo(instance_name, metainfo);
 }
 
@@ -64,22 +66,27 @@ InstancesPair XllmRpcServiceImpl::select_instances_pair(bool only_prefill) {
   return instance_mgr_->select_instances_pair(only_prefill);
 }
 
-InstanceMetaInfo XllmRpcServiceImpl::get_instance_info(const std::string& instance_name) {
+InstanceMetaInfo XllmRpcServiceImpl::get_instance_info(
+    const std::string& instance_name) {
   return instance_mgr_->get_instance_info(instance_name);
 }
 
-std::vector<std::string> XllmRpcServiceImpl::get_static_decode_list(const std::string& instance_name) {
+std::vector<std::string> XllmRpcServiceImpl::get_static_decode_list(
+    const std::string& instance_name) {
   return instance_mgr_->get_static_decode_list(instance_name);
 }
 
-bool XllmRpcServiceImpl::handle_generation(const llm::RequestOutput& request_output) {
+bool XllmRpcServiceImpl::handle_generation(
+    const llm::RequestOutput& request_output) {
   const std::string& service_request_id = request_output.service_request_id;
   OutputCallback cb;
   {
     std::lock_guard<std::mutex> guard(callback_mutex_);
     auto it = callbacks_.find(service_request_id);
     if (it == callbacks_.end()) {
-      LOG(ERROR) << "Can not found the callback for the received request output, request id is: " << service_request_id;
+      LOG(ERROR) << "Can not found the callback for the received request "
+                    "output, request id is: "
+                 << service_request_id;
       return false;
     }
     cb = it->second;
@@ -90,18 +97,23 @@ bool XllmRpcServiceImpl::handle_generation(const llm::RequestOutput& request_out
     std::lock_guard<std::mutex> guard(thread_map_mutex_);
     auto it = remote_requests_output_thread_map_.find(service_request_id);
     if (it == remote_requests_output_thread_map_.end()) {
-      LOG(ERROR) << "Can not found the thread for the received request output, request id is: " << service_request_id;
+      LOG(ERROR) << "Can not found the thread for the received request output, "
+                    "request id is: "
+                 << service_request_id;
       return false;
     }
     req_thread_idx = it->second;
   }
 
   output_threadpools_[req_thread_idx].schedule(
-      [this, service_request_id, cb, request_output = std::move(request_output)]() mutable {
-    if (!cb(request_output) || request_output.finished) {
-      finish_request(service_request_id);
-    }
-  });
+      [this,
+       service_request_id,
+       cb,
+       request_output = std::move(request_output)]() mutable {
+        if (!cb(request_output) || request_output.finished) {
+          finish_request(service_request_id);
+        }
+      });
 
   return true;
 }
@@ -118,47 +130,50 @@ void XllmRpcServiceImpl::finish_request(const std::string& service_request_id) {
   }
 }
 
-bool XllmRpcServiceImpl::record_new_request(std::shared_ptr<ChatCallData> call_data,
-                                            const std::string& service_request_id,
-                                            bool stream,
-                                            const std::string& model,
-                                            bool include_usage) {
+bool XllmRpcServiceImpl::record_new_request(
+    std::shared_ptr<ChatCallData> call_data,
+    const std::string& service_request_id,
+    bool stream,
+    const std::string& model,
+    bool include_usage) {
   {
     std::lock_guard<std::mutex> guard(callback_mutex_);
     if (callbacks_.find(service_request_id) != callbacks_.end()) {
-      LOG(ERROR) << "The request ID already exists. Requests with the same ID are not allowed. " << service_request_id;
+      LOG(ERROR) << "The request ID already exists. Requests with the same ID "
+                    "are not allowed. "
+                 << service_request_id;
       return false;
     }
-    callbacks_[service_request_id] = [this,
-                                      call_data,
-                                      model,
-                                      stream,
-                                      include_usage,
-                                      first_message_sent = std::unordered_set<size_t>(),
-                                      service_request_id,
-                                      created_time = absl::ToUnixSeconds(absl::Now())](
-                                      const llm::RequestOutput& req_output) mutable -> bool {
-        if (req_output.status.has_value()) {
-          const auto& status = req_output.status.value();
-            if (!status.ok()) {
-              return call_data->finish_with_error(
-                to_grpc_status_code(status.code()), status.message());
-            }
-          }
+    callbacks_[service_request_id] =
+        [this,
+         call_data,
+         model,
+         stream,
+         include_usage,
+         first_message_sent = std::unordered_set<size_t>(),
+         service_request_id,
+         created_time = absl::ToUnixSeconds(absl::Now())](
+            const llm::RequestOutput& req_output) mutable -> bool {
+      if (req_output.status.has_value()) {
+        const auto& status = req_output.status.value();
+        if (!status.ok()) {
+          return call_data->finish_with_error(
+              to_grpc_status_code(status.code()), status.message());
+        }
+      }
 
-          if (stream) {
-            return response_handler_.send_delta_to_client(
-                call_data,
-                &first_message_sent,
-                include_usage,
-                service_request_id,
-                created_time,
-                model,
-                req_output);
-          }
+      if (stream) {
+        return response_handler_.send_delta_to_client(call_data,
+                                                      &first_message_sent,
+                                                      include_usage,
+                                                      service_request_id,
+                                                      created_time,
+                                                      model,
+                                                      req_output);
+      }
 
-          return response_handler_.send_result_to_client(
-              call_data, service_request_id, created_time, model, req_output);
+      return response_handler_.send_result_to_client(
+          call_data, service_request_id, created_time, model, req_output);
     };
   }
 
@@ -172,45 +187,48 @@ bool XllmRpcServiceImpl::record_new_request(std::shared_ptr<ChatCallData> call_d
   return true;
 }
 
-bool XllmRpcServiceImpl::record_new_request(std::shared_ptr<CompletionCallData> call_data,
-                                            const std::string& service_request_id,
-                                            bool stream,
-                                            const std::string& model,
-                                            bool include_usage) {
+bool XllmRpcServiceImpl::record_new_request(
+    std::shared_ptr<CompletionCallData> call_data,
+    const std::string& service_request_id,
+    bool stream,
+    const std::string& model,
+    bool include_usage) {
   {
     std::lock_guard<std::mutex> guard(callback_mutex_);
     if (callbacks_.find(service_request_id) != callbacks_.end()) {
-      LOG(ERROR) << "The request ID already exists. Requests with the same ID are not allowed. " << service_request_id;
+      LOG(ERROR) << "The request ID already exists. Requests with the same ID "
+                    "are not allowed. "
+                 << service_request_id;
       return false;
     }
-    callbacks_[service_request_id] = [this,
-                                      call_data,
-                                      model,
-                                      stream,
-                                      include_usage,
-                                      service_request_id,
-                                      created_time = absl::ToUnixSeconds(absl::Now())](
-                                      const llm::RequestOutput& req_output) mutable -> bool {
-        if (req_output.status.has_value()) {
-          const auto& status = req_output.status.value();
-            if (!status.ok()) {
-              return call_data->finish_with_error(
-                to_grpc_status_code(status.code()), status.message());
-            }
-          }
+    callbacks_[service_request_id] =
+        [this,
+         call_data,
+         model,
+         stream,
+         include_usage,
+         service_request_id,
+         created_time = absl::ToUnixSeconds(absl::Now())](
+            const llm::RequestOutput& req_output) mutable -> bool {
+      if (req_output.status.has_value()) {
+        const auto& status = req_output.status.value();
+        if (!status.ok()) {
+          return call_data->finish_with_error(
+              to_grpc_status_code(status.code()), status.message());
+        }
+      }
 
-          if (stream) {
-            return response_handler_.send_delta_to_client(
-                call_data,
-                include_usage,
-                service_request_id,
-                created_time,
-                model,
-                req_output);
-          }
+      if (stream) {
+        return response_handler_.send_delta_to_client(call_data,
+                                                      include_usage,
+                                                      service_request_id,
+                                                      created_time,
+                                                      model,
+                                                      req_output);
+      }
 
-          return response_handler_.send_result_to_client(
-              call_data, service_request_id, created_time, model, req_output);
+      return response_handler_.send_result_to_client(
+          call_data, service_request_id, created_time, model, req_output);
     };
   }
 
@@ -228,19 +246,15 @@ ServiceConfig XllmRpcServiceImpl::get_config() {
   return ServiceConfig(enable_decode_response_to_service_);
 }
 
-
 XllmRpcService::XllmRpcService(std::shared_ptr<XllmRpcServiceImpl> service)
-    : xllm_service_(service) {
-}
+    : xllm_service_(service) {}
 
-XllmRpcService::~XllmRpcService() {
-}
+XllmRpcService::~XllmRpcService() {}
 
-void XllmRpcService::Hello(
-    google::protobuf::RpcController* cntl_base,
-    const proto::Empty* req,
-    proto::Status* resp,
-    google::protobuf::Closure* done) {
+void XllmRpcService::Hello(google::protobuf::RpcController* cntl_base,
+                           const proto::Empty* req,
+                           proto::Status* resp,
+                           google::protobuf::Closure* done) {
   brpc::ClosureGuard done_guard(done);
   resp->set_ok(true);
 }
@@ -254,29 +268,25 @@ void XllmRpcService::RegisterInstance(
   InstanceType type = InstanceType::DEFAULT;
   if (req->has_type() && req->type() == proto::InstanceType::PREFILL) {
     type = InstanceType::PREFILL;
-  } else if(req->has_type() && req->type() == proto::InstanceType::DECODE) {
+  } else if (req->has_type() && req->type() == proto::InstanceType::DECODE) {
     type = InstanceType::DECODE;
   }
   InstanceMetaInfo metainfo(req->name(), req->rpc_address(), type);
-  metainfo.cluster_ids =
-      std::vector<uint64_t>(req->cluster_ids().begin(),
-                            req->cluster_ids().end());
-  metainfo.k_cache_ids =
-      std::vector<uint64_t>(req->k_cache_ids().begin(),
-                            req->k_cache_ids().end());
-  metainfo.v_cache_ids =
-      std::vector<uint64_t>(req->v_cache_ids().begin(),
-                            req->v_cache_ids().end());
+  metainfo.cluster_ids = std::vector<uint64_t>(req->cluster_ids().begin(),
+                                               req->cluster_ids().end());
+  metainfo.k_cache_ids = std::vector<uint64_t>(req->k_cache_ids().begin(),
+                                               req->k_cache_ids().end());
+  metainfo.v_cache_ids = std::vector<uint64_t>(req->v_cache_ids().begin(),
+                                               req->v_cache_ids().end());
   metainfo.dp_size = req->dp_size();
   ErrorCode code = xllm_service_->register_instance(req->name(), metainfo);
   resp->set_status_code(ConvertErrorCode::to_int(code));
 }
 
-void XllmRpcService::GetInstanceInfo(
-    google::protobuf::RpcController* cntl_base,
-    const proto::InstanceID* req,
-    proto::InstanceMetaInfo* resp,
-    google::protobuf::Closure* done) {
+void XllmRpcService::GetInstanceInfo(google::protobuf::RpcController* cntl_base,
+                                     const proto::InstanceID* req,
+                                     proto::InstanceMetaInfo* resp,
+                                     google::protobuf::Closure* done) {
   brpc::ClosureGuard done_guard(done);
   InstanceMetaInfo metainfo = xllm_service_->get_instance_info(req->name());
   resp->set_name(metainfo.name);
@@ -300,11 +310,10 @@ void XllmRpcService::GetInstanceInfo(
   resp->set_dp_size(metainfo.dp_size);
 }
 
-void XllmRpcService::Heartbeat(
-    google::protobuf::RpcController* cntl_base,
-    const proto::HeartbeatRequest* req,
-    proto::Status* resp,
-    google::protobuf::Closure* done) {
+void XllmRpcService::Heartbeat(google::protobuf::RpcController* cntl_base,
+                               const proto::HeartbeatRequest* req,
+                               proto::Status* resp,
+                               google::protobuf::Closure* done) {
   brpc::ClosureGuard done_guard(done);
   auto inst_name = req->name();
   xllm_service_->heartbeat(inst_name);
@@ -317,17 +326,17 @@ void XllmRpcService::GetStaticDecodeList(
     proto::InstanceIDs* resp,
     google::protobuf::Closure* done) {
   brpc::ClosureGuard done_guard(done);
-  std::vector<std::string> decode_list = xllm_service_->get_static_decode_list(req->name());
+  std::vector<std::string> decode_list =
+      xllm_service_->get_static_decode_list(req->name());
   for (auto& d : decode_list) {
     *(resp->mutable_names()->Add()) = std::move(d);
   }
 }
 
-void XllmRpcService::Generations(
-    google::protobuf::RpcController* cntl_base,
-    const proto::DisaggStreamGenerations* req,
-    proto::StatusSet* resp,
-    google::protobuf::Closure* done) {
+void XllmRpcService::Generations(google::protobuf::RpcController* cntl_base,
+                                 const proto::DisaggStreamGenerations* req,
+                                 proto::StatusSet* resp,
+                                 google::protobuf::Closure* done) {
   brpc::ClosureGuard done_guard(done);
 
   // TODO: use threadpool here
@@ -338,18 +347,15 @@ void XllmRpcService::Generations(
     request_output.request_id = request.req_id();
     request_output.service_request_id = request.service_req_id();
     if (request.has_gen_status()) {
-      request_output.status =
-          llm::Status(static_cast<llm::StatusCode>(request.gen_status().status_code()),
-                 request.gen_status().status_msg());
+      request_output.status = llm::Status(
+          static_cast<llm::StatusCode>(request.gen_status().status_code()),
+          request.gen_status().status_msg());
     }
     if (request.has_usage()) {
       llm::Usage u;
-      u.num_prompt_tokens =
-          request.usage().num_prompt_tokens();
-      u.num_generated_tokens =
-          request.usage().num_generated_tokens();
-      u.num_total_tokens =
-          request.usage().num_total_tokens();
+      u.num_prompt_tokens = request.usage().num_prompt_tokens();
+      u.num_generated_tokens = request.usage().num_generated_tokens();
+      u.num_total_tokens = request.usage().num_total_tokens();
       request_output.usage = std::move(u);
     }
     request_output.finished = request.finished();
@@ -357,8 +363,8 @@ void XllmRpcService::Generations(
       llm::SequenceOutput sequence_output;
       sequence_output.index = output.index();
       sequence_output.text = output.text();
-      sequence_output.token_ids =
-          std::vector<int32_t>(output.token_ids().begin(), output.token_ids().end());
+      sequence_output.token_ids = std::vector<int32_t>(
+          output.token_ids().begin(), output.token_ids().end());
       if (!output.finish_reason().empty()) {
         sequence_output.finish_reason = output.finish_reason();
       }
@@ -384,7 +390,7 @@ void XllmRpcService::Generations(
           }
           logprobs.emplace_back(std::move(lp));
         }
-        sequence_output.logprobs = std::move(logprobs);  
+        sequence_output.logprobs = std::move(logprobs);
       }
       request_output.outputs.emplace_back(std::move(sequence_output));
     }
@@ -393,14 +399,14 @@ void XllmRpcService::Generations(
   }
 }
 
-void XllmRpcService::GetConfig(
-      google::protobuf::RpcController* cntl_base,
-      const proto::Empty* req,
-      proto::ServiceConfig* resp,
-      google::protobuf::Closure* done) {
+void XllmRpcService::GetConfig(google::protobuf::RpcController* cntl_base,
+                               const proto::Empty* req,
+                               proto::ServiceConfig* resp,
+                               google::protobuf::Closure* done) {
   brpc::ClosureGuard done_guard(done);
   auto config = xllm_service_->get_config();
-  resp->set_enable_decode_response_to_service(config.enable_decode_response_to_service);
+  resp->set_enable_decode_response_to_service(
+      config.enable_decode_response_to_service);
 }
 
-} // namespace xllm_service
+}  // namespace xllm_service

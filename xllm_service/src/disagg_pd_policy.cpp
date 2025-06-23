@@ -1,7 +1,8 @@
+#include "disagg_pd_policy.h"
+
 #include <glog/logging.h>
 
 #include "common/utils.h"
-#include "disagg_pd_policy.h"
 
 namespace xllm_service {
 
@@ -12,14 +13,12 @@ void debug_print(const std::string& action,
                  const std::string& type,
                  int idx) {
   if (utils::enable_debug_log()) {
-    LOG(INFO) << "DisaggPdPolicy " << action
-              << " instance, name = " << name
-              << ", type = " << type
-              << ", idx = " << idx;
+    LOG(INFO) << "DisaggPdPolicy " << action << " instance, name = " << name
+              << ", type = " << type << ", idx = " << idx;
   }
 }
 
-} // namespace
+}  // namespace
 
 DisaggPdPolicy::DisaggPdPolicy() {}
 
@@ -32,43 +31,46 @@ void DisaggPdPolicy::insert_instance(const std::string& name,
   if (type == InstanceType::DEFAULT || type == InstanceType::PREFILL) {
     auto it = prefill_instance_to_index_.find(name);
     if (it != prefill_instance_to_index_.end()) {
-      LOG(ERROR) << "Insert instance is already existed, name: "
-                 << name << ", type: " << static_cast<int32_t>(type);
+      LOG(ERROR) << "Insert instance is already existed, name: " << name
+                 << ", type: " << static_cast<int32_t>(type);
       return;
     }
     prefill_instance_.emplace_back(info);
-    prefill_instance_to_index_[name] = prefill_instance_.size()-1;
-    debug_print("insert", name, "prefill or default", prefill_instance_to_index_[name]);
+    prefill_instance_to_index_[name] = prefill_instance_.size() - 1;
+    debug_print(
+        "insert", name, "prefill or default", prefill_instance_to_index_[name]);
   } else {
     auto it = decode_instance_to_index_.find(name);
     if (it != decode_instance_to_index_.end()) {
-      LOG(ERROR) << "Insert instance is already existed, name: "
-                 << name << ", type: " << static_cast<int32_t>(type);
+      LOG(ERROR) << "Insert instance is already existed, name: " << name
+                 << ", type: " << static_cast<int32_t>(type);
       return;
     }
     decode_instance_.emplace_back(info);
-    decode_instance_to_index_[name] = decode_instance_.size()-1;
+    decode_instance_to_index_[name] = decode_instance_.size() - 1;
     debug_print("insert", name, "decode", decode_instance_to_index_[name]);
   }
 }
 
-void DisaggPdPolicy::update_instance(const std::string& name, InstanceMetaInfo* info) {
+void DisaggPdPolicy::update_instance(const std::string& name,
+                                     InstanceMetaInfo* info) {
   std::lock_guard<std::mutex> guard(mutex_);
   InstanceType type = info->type;
   if (type == InstanceType::DEFAULT || type == InstanceType::PREFILL) {
     auto it = prefill_instance_to_index_.find(name);
     if (it == prefill_instance_to_index_.end()) {
-      LOG(ERROR) << "Update instance is not existed, name: "
-                 << name << ", type: " << static_cast<int32_t>(type);
+      LOG(ERROR) << "Update instance is not existed, name: " << name
+                 << ", type: " << static_cast<int32_t>(type);
       return;
     }
     prefill_instance_[it->second] = info;
-    debug_print("update", name, "prefill or default", prefill_instance_to_index_[name]);
+    debug_print(
+        "update", name, "prefill or default", prefill_instance_to_index_[name]);
   } else {
     auto it = decode_instance_to_index_.find(name);
     if (it == decode_instance_to_index_.end()) {
-      LOG(ERROR) << "Update instance is not existed, name: "
-                 << name << ", type: " << static_cast<int32_t>(type);
+      LOG(ERROR) << "Update instance is not existed, name: " << name
+                 << ", type: " << static_cast<int32_t>(type);
       return;
     }
     decode_instance_[it->second] = info;
@@ -82,8 +84,8 @@ void DisaggPdPolicy::remove_instance(const std::string& name,
   if (type == InstanceType::DEFAULT || type == InstanceType::PREFILL) {
     auto it = prefill_instance_to_index_.find(name);
     if (it == prefill_instance_to_index_.end()) {
-      LOG(ERROR) << "Remove instance not found, name: "
-                 << name << ", type: " << static_cast<int32_t>(type);
+      LOG(ERROR) << "Remove instance not found, name: " << name
+                 << ", type: " << static_cast<int32_t>(type);
       return;
     }
     auto idx = it->second;
@@ -94,8 +96,8 @@ void DisaggPdPolicy::remove_instance(const std::string& name,
   } else {
     auto it = decode_instance_to_index_.find(name);
     if (it == decode_instance_to_index_.end()) {
-      LOG(ERROR) << "Remove instance not found, name: "
-                 << name << ", type: " << static_cast<int32_t>(type);
+      LOG(ERROR) << "Remove instance not found, name: " << name
+                 << ", type: " << static_cast<int32_t>(type);
       return;
     }
     auto idx = it->second;
@@ -112,7 +114,8 @@ RoundRobinDisaggPdPolicy::RoundRobinDisaggPdPolicy() {
 
 RoundRobinDisaggPdPolicy::~RoundRobinDisaggPdPolicy() {}
 
-InstancesPair RoundRobinDisaggPdPolicy::select_instances_pair(bool only_prefill) {
+InstancesPair RoundRobinDisaggPdPolicy::select_instances_pair(
+    bool only_prefill) {
   std::lock_guard<std::mutex> guard(mutex_);
   // return the first available prefill instance
   if (only_prefill) {
@@ -186,4 +189,4 @@ RoundRobinDisaggPdPolicy::allocate_pd_pairs(/*params here*/) {
   return {};
 }
 
-} // namespace xllm_service
+}  // namespace xllm_service

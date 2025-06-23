@@ -1,7 +1,8 @@
-#include <butil/time.h>
 #include <brpc/channel.h>
+#include <butil/time.h>
 #include <gflags/gflags.h>
 #include <glog/logging.h>
+
 #include <iostream>
 #include <memory>
 #include <string>
@@ -9,8 +10,12 @@
 #include "xllm_rpc_service.pb.h"
 
 DEFINE_string(server_address, "localhost:9999", "Grpc server address.");
-DEFINE_string(protocol, "baidu_std", "Protocol type. Defined in src/brpc/options.proto");
-DEFINE_string(connection_type, "", "Connection type. Available values: single, pooled, short");
+DEFINE_string(protocol,
+              "baidu_std",
+              "Protocol type. Defined in src/brpc/options.proto");
+DEFINE_string(connection_type,
+              "",
+              "Connection type. Available values: single, pooled, short");
 DEFINE_string(load_balancer, "", "The algorithm for load balancing");
 DEFINE_int32(timeout_ms, 100, "RPC timeout in milliseconds");
 DEFINE_int32(max_retry, 3, "Max retries(not including the first RPC)");
@@ -34,13 +39,15 @@ class HelloClient final {
     brpc::ChannelOptions chan_options;
     chan_options.protocol = options.protocol;
     chan_options.connection_type = options.connection_type;
-    chan_options.timeout_ms = options.timeout_ms/*milliseconds*/;
+    chan_options.timeout_ms = options.timeout_ms /*milliseconds*/;
     chan_options.max_retry = options.max_retry;
-    if (master_channel_.Init(addr.c_str(), options.load_balancer.c_str(), &chan_options) != 0) {
+    if (master_channel_.Init(
+            addr.c_str(), options.load_balancer.c_str(), &chan_options) != 0) {
       LOG(ERROR) << "Fail to initialize brpc channel to server " << addr;
       return;
     }
-    master_stub_ = std::make_unique<proto::XllmRpcService_Stub>(&master_channel_);
+    master_stub_ =
+        std::make_unique<proto::XllmRpcService_Stub>(&master_channel_);
   }
 
   void hello() {
@@ -50,8 +57,7 @@ class HelloClient final {
     proto::Status response;
     master_stub_->Hello(&cntl, &request, &response, nullptr);
     if (cntl.Failed()) {
-      LOG(ERROR) << "Send to server faild, err msg:"
-                 << cntl.ErrorText();
+      LOG(ERROR) << "Send to server faild, err msg:" << cntl.ErrorText();
       return;
     }
 
@@ -65,7 +71,6 @@ class HelloClient final {
 
 }  // namespace test
 }  // namespace xllm_service
-
 
 int main(int argc, char* argv[]) {
   // initialize glog and gflags

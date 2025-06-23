@@ -5,8 +5,12 @@
 
 DEFINE_string(server_address, "localhost:9999", "Grpc server address.");
 DEFINE_string(client_name, "127.0.0.1@9999", "client name.");
-DEFINE_string(protocol, "baidu_std", "Protocol type. Defined in src/brpc/options.proto");
-DEFINE_string(connection_type, "", "Connection type. Available values: single, pooled, short");
+DEFINE_string(protocol,
+              "baidu_std",
+              "Protocol type. Defined in src/brpc/options.proto");
+DEFINE_string(connection_type,
+              "",
+              "Connection type. Available values: single, pooled, short");
 DEFINE_string(server, "0.0.0.0:8000", "IP Address of server");
 DEFINE_string(load_balancer, "", "The algorithm for load balancing");
 DEFINE_int32(timeout_ms, 100, "RPC timeout in milliseconds");
@@ -24,7 +28,8 @@ int main(int argc, char* argv[]) {
   xllm_service::ChannelOptions options;
 
   // Create a client instance
-  xllm_service::XllmRpcClient client(FLAGS_client_name, server_address, options);
+  xllm_service::XllmRpcClient client(
+      FLAGS_client_name, server_address, options);
 
   // Register the instance
   auto ret = client.register_instance();

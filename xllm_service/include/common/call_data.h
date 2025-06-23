@@ -5,6 +5,7 @@
 #include <glog/logging.h>
 #include <grpcpp/grpcpp.h>
 #include <json2pb/pb_to_json.h>
+
 #include <string>
 
 // Interface for the classes that are used to handle grpc requests.
@@ -48,13 +49,11 @@ class StreamCallData : public CallData {
                  bool stream,
                  ::google::protobuf::Closure* done,
                  Response* response)
-      : controller_(controller),
-        done_(done),
-        response_(response) {
+      : controller_(controller), done_(done), response_(response) {
     stream_ = stream;
     get_x_request_id(x_request_id, controller_);
     get_x_request_time(x_request_time, controller_);
-   
+
     if (stream_) {
       pa_ = controller_->CreateProgressiveAttachment();
 
@@ -84,7 +83,7 @@ class StreamCallData : public CallData {
   bool proceed(bool rpc_ok) override { return true; }
 
   // For non stream response
-  bool write_and_finish(const std::string& attachment/*json string*/) {
+  bool write_and_finish(const std::string& attachment /*json string*/) {
     controller_->response_attachment() = attachment;
     return true;
   }

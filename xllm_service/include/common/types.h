@@ -1,8 +1,9 @@
 #pragma once
 
+#include <glog/logging.h>
+
 #include <chrono>
 #include <cstdint>
-#include <glog/logging.h>
 #include <string>
 
 namespace xllm_service {
@@ -16,7 +17,7 @@ struct HttpServiceConfig {
 struct RpcServiceConfig {
   std::string etcd_addr = "";
   std::string disagg_pd_policy = "";
-  int detect_disconnected_instance_interval = 15; // seconds
+  int detect_disconnected_instance_interval = 15;  // seconds
 };
 
 // instances pair for prefill and decode in disagg PD mode.
@@ -34,7 +35,7 @@ enum class ErrorCode : int32_t {
 };
 
 class ConvertErrorCode {
-public:
+ public:
   static int32_t to_int(ErrorCode code) noexcept {
     return static_cast<int32_t>(code);
   }
@@ -53,14 +54,15 @@ enum class InstanceType : int8_t {
 };
 
 struct InstanceMetaInfo {
-public:
+ public:
   InstanceMetaInfo() { set_init_timestamp(); }
-  InstanceMetaInfo(const std::string &inst_name, const std::string rpc_addr)
+  InstanceMetaInfo(const std::string& inst_name, const std::string rpc_addr)
       : name(inst_name), rpc_address(rpc_addr) {
     set_init_timestamp();
   }
-  InstanceMetaInfo(const std::string &inst_name, const std::string rpc_addr,
-                   const InstanceType &inst_type)
+  InstanceMetaInfo(const std::string& inst_name,
+                   const std::string rpc_addr,
+                   const InstanceType& inst_type)
       : name(inst_name), rpc_address(rpc_addr), type(inst_type) {
     set_init_timestamp();
   }
@@ -76,7 +78,7 @@ public:
   // latest heatbeat timestamp
   uint64_t latest_timestamp = 0;
 
-private:
+ private:
   void set_init_timestamp() {
     auto now = std::chrono::system_clock::now();
     auto timestamp_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -90,7 +92,7 @@ private:
 struct InstanceIdentityInfo {
   std::string instance_addr;
   std::string rpc_addr;
-  int8_t instance_type; // convert to InstanceType
+  int8_t instance_type;  // convert to InstanceType
 
   const std::string debug_string() const {
     std::string debug_str =
@@ -100,4 +102,4 @@ struct InstanceIdentityInfo {
   }
 };
 
-} // namespace xllm_service
+}  // namespace xllm_service

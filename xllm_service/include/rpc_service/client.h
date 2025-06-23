@@ -1,7 +1,8 @@
 #pragma once
 
-#include <butil/time.h>
 #include <brpc/channel.h>
+#include <butil/time.h>
+
 #include <string>
 #include <thread>
 
@@ -28,6 +29,7 @@ class XllmRpcClient {
 
   ErrorCode register_instance();
   ErrorCode register_instance(const InstanceMetaInfo& metainfo);
+
  private:
   void heartbeat();
 
@@ -42,4 +44,4 @@ class XllmRpcClient {
   std::unique_ptr<std::thread> heartbeat_thread_;
 };
 
-} // namespace xllm_service
+}  // namespace xllm_service

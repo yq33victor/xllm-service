@@ -1,11 +1,11 @@
-#include <glog/logging.h>
-
 #include "rpc_service/client.h"
+
+#include <glog/logging.h>
 
 namespace xllm_service {
 
 // magic number, TODO: move to config file or env var
-static constexpr int kHeartbeatInterval = 3; // in seconds
+static constexpr int kHeartbeatInterval = 3;  // in seconds
 
 XllmRpcClient::XllmRpcClient(const std::string& instace_name,
                              const std::string& master_addr,
@@ -14,16 +14,19 @@ XllmRpcClient::XllmRpcClient(const std::string& instace_name,
   brpc::ChannelOptions chan_options;
   chan_options.protocol = options.protocol;
   chan_options.connection_type = options.connection_type;
-  chan_options.timeout_ms = options.timeout_ms/*milliseconds*/;
+  chan_options.timeout_ms = options.timeout_ms /*milliseconds*/;
   chan_options.max_retry = options.max_retry;
-  if (master_channel_.Init(master_addr_.c_str(), options.load_balancer.c_str(), &chan_options) != 0) {
-      LOG(ERROR) << "Fail to initialize brpc channel to server " << master_addr_;
-      return;
+  if (master_channel_.Init(master_addr_.c_str(),
+                           options.load_balancer.c_str(),
+                           &chan_options) != 0) {
+    LOG(ERROR) << "Fail to initialize brpc channel to server " << master_addr_;
+    return;
   }
   master_stub_ = std::make_unique<proto::XllmRpcService_Stub>(&master_channel_);
 
   // heartbeat thread
-  heartbeat_thread_ = std::make_unique<std::thread>(&XllmRpcClient::heartbeat, this);
+  heartbeat_thread_ =
+      std::make_unique<std::thread>(&XllmRpcClient::heartbeat, this);
 }
 
 XllmRpcClient::~XllmRpcClient() {
@@ -33,7 +36,7 @@ XllmRpcClient::~XllmRpcClient() {
   }
 }
 
-// TODO: send metainfo/metrics to master ? 
+// TODO: send metainfo/metrics to master ?
 void XllmRpcClient::heartbeat() {
   while (!exited_) {
     std::this_thread::sleep_for(std::chrono::seconds(kHeartbeatInterval));
@@ -46,12 +49,11 @@ void XllmRpcClient::heartbeat() {
     master_stub_->Heartbeat(&cntl, &req, &res, nullptr);
     if (cntl.Failed()) {
       LOG(ERROR) << instance_name_
-                 << " failed to send heartbeat to master: "
-                 << cntl.ErrorText();;
+                 << " failed to send heartbeat to master: " << cntl.ErrorText();
+      ;
     } else if (!res.ok()) {
       LOG(ERROR) << instance_name_
-                 << " failed to send heartbeat to master, status: "
-                 << res.ok();
+                 << " failed to send heartbeat to master, status: " << res.ok();
     }
   }
 }
@@ -78,7 +80,8 @@ ErrorCode XllmRpcClient::register_instance(const InstanceMetaInfo& metainfo) {
   if (cntl.Failed()) {
     LOG(ERROR) << instance_name_
                << " failed to send register_instance to master: "
-               << cntl.ErrorText();;
+               << cntl.ErrorText();
+    ;
   } else if (res.status_code() != ConvertErrorCode::to_int(ErrorCode::OK)) {
     LOG(ERROR) << instance_name_
                << " failed to send register_instance to master: "
@@ -90,4 +93,4 @@ ErrorCode XllmRpcClient::register_instance(const InstanceMetaInfo& metainfo) {
   return ConvertErrorCode::from_int(res.status_code());
 }
 
-} // namespace xllm_service
+}  // namespace xllm_service

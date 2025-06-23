@@ -1,10 +1,11 @@
 #include "common/utils.h"
 
 #include <glog/logging.h>
-#include <mutex>
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <unistd.h>
+
+#include <mutex>
 
 namespace xllm_service {
 namespace utils {
@@ -13,7 +14,7 @@ bool enable_debug_log() {
   static bool debug_log_enabled = false;
   static std::once_flag debug_flag;
   std::call_once(debug_flag, []() {
-    const char *enable_debug_env = std::getenv("ENABLE_XLLM_DEBUG_LOG");
+    const char* enable_debug_env = std::getenv("ENABLE_XLLM_DEBUG_LOG");
     if (enable_debug_env != nullptr && std::string(enable_debug_env) == "1") {
       debug_log_enabled = true;
     }
@@ -57,5 +58,5 @@ bool get_bool_env(const std::string& key, bool defaultValue) {
           strVal == "True");
 }
 
-} // namespace utils
-} // namespace xllm_service
+}  // namespace utils
+}  // namespace xllm_service

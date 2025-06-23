@@ -12,9 +12,8 @@ class ClosureGuard {
   ClosureGuard() : done_(nullptr) {}
 
   // Constructed with a closure which will be Run() inside dtor.
-  explicit ClosureGuard(google::protobuf::Closure* done)
-      : done_(done) {}
-    
+  explicit ClosureGuard(google::protobuf::Closure* done) : done_(done) {}
+
   // Run internal closure if it's not NULL.
   ~ClosureGuard() {
     if (done_) {
@@ -38,21 +37,16 @@ class ClosureGuard {
   }
 
   // True if no closure inside.
-  bool empty() const {
-    return done_ == nullptr;
-  }
+  bool empty() const { return done_ == nullptr; }
 
   // Exchange closure with another guard.
-  void swap(ClosureGuard& other) {
-    std::swap(done_, other.done_);
-  }
-    
+  void swap(ClosureGuard& other) { std::swap(done_, other.done_); }
+
  private:
   // Copying this object makes no sense.
   DISALLOW_COPY_AND_ASSIGN(ClosureGuard);
-    
+
   google::protobuf::Closure* done_ = nullptr;
 };
 
-} // namespace xllm_service
-
+}  // namespace xllm_service
