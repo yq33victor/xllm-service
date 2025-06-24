@@ -27,6 +27,9 @@ struct ServerOptions {
   std::string etcd_addr = "";
   std::string disagg_pd_policy = "RR";
   int32_t detect_disconnected_instance_interval = 15;
+  int32_t block_size = 16;
+  std::string model_type = "chatglm";
+  std::string tokenizer_path = "";
 };
 
 class Master {

@@ -2,28 +2,9 @@
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 
+#include "common/global_gflags.h"
 #include "common/utils.h"
 #include "rpc_service/service.h"
-
-// Define command line flags
-DEFINE_string(listen_addr,
-              "",
-              "Server listen address, may be IPV4/IPV6/UDS."
-              " If this is set, the flag port will be ignored");
-DEFINE_int32(port, 9999, "Port for xllm rpc service to listen on");
-DEFINE_int32(idle_timeout_s,
-             -1,
-             "Connection will be closed if there is no "
-             "read/write operations during the last `idle_timeout_s'");
-DEFINE_int32(num_threads, 32, "Maximum number of threads to use");
-DEFINE_int32(max_concurrency,
-             128,
-             "Limit number of requests processed in parallel");
-DEFINE_string(etcd_addr, "", "etcd adderss for save instance meta info");
-DEFINE_string(disagg_pd_policy, "RR", "Disaggregated prefill-decode policy.");
-DEFINE_int32(detect_disconnected_instance_interval,
-             15,
-             "The interval that server detect the disconnected instance.");
 
 int main(int argc, char* argv[]) {
   // Initialize gflags
@@ -46,6 +27,7 @@ int main(int argc, char* argv[]) {
   config.disagg_pd_policy = FLAGS_disagg_pd_policy;
   config.detect_disconnected_instance_interval =
       FLAGS_detect_disconnected_instance_interval;
+
   // create xllm service
   auto xllm_service_impl =
       std::make_shared<xllm_service::XllmRpcServiceImpl>(config);

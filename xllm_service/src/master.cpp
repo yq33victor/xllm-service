@@ -2,6 +2,7 @@
 
 #include <csignal>
 
+#include "common/global_gflags.h"
 #include "common/types.h"
 #include "common/utils.h"
 
@@ -18,6 +19,7 @@ Master::Master(const ServerOptions& server_options)
   rpc_config.disagg_pd_policy = server_options.disagg_pd_policy;
   rpc_config.detect_disconnected_instance_interval =
       server_options.detect_disconnected_instance_interval;
+
   rpc_service_impl_ =
       std::make_shared<xllm_service::XllmRpcServiceImpl>(rpc_config);
   rpc_service_ =
@@ -137,41 +139,6 @@ bool Master::start_rpc_server() {
 
 }  // namespace xllm_service
 
-DEFINE_string(http_server_host,
-              "",
-              "Http server listen address, may be IPV4/IPV6/UDS."
-              " If this is set, the flag port will be ignored");
-DEFINE_int32(http_server_port, 8888, "Port for xllm http service to listen on");
-DEFINE_int32(http_server_idle_timeout_s,
-             -1,
-             "Connection will be closed if there is no "
-             "read/write operations during the last `idle_timeout_s'");
-DEFINE_int32(http_server_num_threads, 32, "Maximum number of threads to use");
-DEFINE_int32(http_server_max_concurrency,
-             128,
-             "Limit number of requests processed in parallel");
-
-DEFINE_string(rpc_server_host,
-              "",
-              "Rpc server listen address, may be IPV4/IPV6/UDS."
-              " If this is set, the flag port will be ignored");
-DEFINE_int32(rpc_server_port, 8889, "Port for xllm rpc service to listen on");
-DEFINE_int32(rpc_server_idle_timeout_s,
-             -1,
-             "Connection will be closed if there is no "
-             "read/write operations during the last `idle_timeout_s'");
-DEFINE_int32(rpc_server_num_threads, 32, "Maximum number of threads to use");
-DEFINE_int32(rpc_server_max_concurrency,
-             128,
-             "Limit number of requests processed in parallel");
-DEFINE_string(etcd_addr,
-              "0.0.0.0:2379",
-              "etcd adderss for save instance meta info");
-DEFINE_string(disagg_pd_policy, "RR", "Disaggregated prefill-decode policy.");
-DEFINE_int32(detect_disconnected_instance_interval,
-             15,
-             "The interval that server detect the disconnected instance.");
-DEFINE_bool(enable_request_trace, false, "Whether to enable request trace");
 static std::atomic<uint32_t> g_signal_received{0};
 void shutdown_handler(int signal) {
   LOG(WARNING) << "Received signal " << signal << ", stopping master...";
@@ -219,6 +186,9 @@ int main(int argc, char* argv[]) {
   server_options.detect_disconnected_instance_interval =
       FLAGS_detect_disconnected_instance_interval;
   server_options.enable_request_trace = FLAGS_enable_request_trace;
+  server_options.block_size = FLAGS_block_size;
+  server_options.model_type = FLAGS_model_type;
+  server_options.tokenizer_path = FLAGS_tokenizer_path;
 
   xllm_service::Master master(server_options);
 

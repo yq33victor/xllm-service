@@ -3,24 +3,8 @@
 #include <glog/logging.h>
 #include <grpcpp/grpcpp.h>
 
+#include "common/global_gflags.h"
 #include "http_service/service.h"
-
-// Define command line flags
-DEFINE_int32(port, 8888, "Port for xllm http service to listen on");
-DEFINE_int32(idle_timeout_s,
-             -1,
-             "Connection will be closed if there is no read/write operations "
-             "during the last `idle_timeout_s`");
-DEFINE_int32(num_threads, 32, "Number of threads to process requests");
-DEFINE_int32(max_concurrency,
-             128,
-             "Limit number of requests processed in parallel");
-DEFINE_string(test_instance_addr,
-              "0.0.0.0:9999",
-              "Xllm instance listen addr for testing.");
-DEFINE_int32(timeout_ms,
-             -1,
-             "Max duration of bRPC Channel. -1 means wait indefinitely.");
 
 int main(int argc, char** argv) {
   // Initialize gflags

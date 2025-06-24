@@ -86,6 +86,8 @@ endif()
 project("xllm_service" LANGUAGES C CXX)
 
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
+enable_language(Rust)
+find_package(Rust REQUIRED)
 
 # include custom cmake modules
 include(static_analyzers)

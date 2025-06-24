@@ -1,7 +1,86 @@
 include(cc_binary)
 include(cc_library)
+include(cc_test)
 
 add_subdirectory(proto)
+add_subdirectory(include/huggingface)
+
+# ---- tokenizers ----
+
+cc_library(
+  NAME 
+    tokenizer
+  HDRS
+    include/common/json_reader.h
+    include/common/macros.h
+    include/common/slice.h
+    include/tokenizers/tokenizer_args.h
+    include/tokenizers/tokenizer.h
+    include/tokenizers/tiktoken_tokenizer.h
+    include/tokenizers/sentencepiece_tokenizer.h
+    include/tokenizers/hf_tokenizer.h
+    include/tokenizers/tokenizer_args_loader.h
+  SRCS
+    src/common/json_reader.cpp
+    src/tokenizers/hf_tokenizer.cpp
+    src/tokenizers/sentencepiece_tokenizer.cpp
+    src/tokenizers/tiktoken_tokenizer.cpp
+    src/tokenizers/tokenizer_args_loader.cpp
+  DEPS
+    sentencepiece
+    absl::flat_hash_map
+    absl::strings
+    huggingface
+    glog::glog
+    re2::re2
+    nlohmann_json::nlohmann_json
+)
+
+cc_test(
+  NAME
+    tokenizer_test
+  SRCS
+    src/tokenizers/sentencepiece_tokenizer_test.cpp
+    src/tokenizers/tiktoken_tokenizer_test.cpp
+  DEPS
+    :tokenizer
+    GTest::gtest_main
+      src/tokenizers/data
+      src/tokenizers/data/tokenizer.model
+      src/tokenizers/data/test.tiktoken
+)
+
+# ---- chat template ----
+
+cc_library (
+  NAME
+    chat_template
+  HDRS
+    include/chat_template/chat_template.h
+    include/chat_template/coded_chat_template.h
+    include/chat_template/common_chat_template.h
+    include/chat_template/jinja_chat_template.h
+  SRCS
+    src/chat_template/coded_chat_template.cpp
+    src/chat_template/common_chat_template.cpp
+    src/chat_template/jinja_chat_template.cpp
+  DEPS
+    :minja
+    :tokenizer
+    nlohmann_json::nlohmann_json
+    glog::glog
+)
+
+cc_test (
+  NAME
+    chat_template_test
+  SRCS
+    src/chat_template/jinja_chat_template_test.cpp
+  DEPS
+    :chat_template
+    GTest::gtest_main
+)
+
 
 # ---- rpc service ----
 
@@ -10,6 +89,7 @@ cc_library(
   xllm_rpc_service
   HDRS
     include/common/call_data.h
+    include/common/global_gflags.h
     include/common/threadpool.h
     include/common/types.h
     include/common/utils.h
@@ -23,6 +103,7 @@ cc_library(
   SRCS
     src/common/threadpool.cpp
     src/common/utils.cpp
+    src/common/global_gflags.cpp
     src/disagg_pd_policy.cpp
     src/etcd_client.cpp
     src/instance_mgr.cpp
@@ -37,6 +118,8 @@ cc_library(
     nlohmann_json::nlohmann_json
     proto::proto_rpc_service
     proto_xllm
+    tokenizer
+    chat_template
 )
 target_link_libraries(xllm_rpc_service PRIVATE brpc-static)
 

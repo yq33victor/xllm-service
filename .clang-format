@@ -11,4 +11,3 @@ AllowAllParametersOfDeclarationOnNextLine: false
 DerivePointerAlignment: false
 PointerAlignment: Left
 ...
-

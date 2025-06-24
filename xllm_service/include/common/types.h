@@ -5,6 +5,7 @@
 #include <chrono>
 #include <cstdint>
 #include <string>
+#include <vector>
 
 namespace xllm_service {
 
