@@ -12,7 +12,7 @@ struct HttpServiceConfig {
   int num_threads = 16;
   int timeout_ms = -1;
   std::string test_instance_addr = "";
-  bool enable_request_trace = true;
+  bool enable_request_trace = false;
 };
 
 struct RpcServiceConfig {
