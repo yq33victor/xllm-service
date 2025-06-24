@@ -10,6 +10,7 @@
 #include "common/threadpool.h"
 #include "common/types.h"
 #include "completion.pb.h"
+#include "request_tracer.h"
 #include "xllm_http_service.pb.h"
 
 namespace xllm_service {
@@ -107,6 +108,7 @@ class XllmHttpServiceImpl : public proto::XllmHttpService {
 
   std::shared_ptr<XllmRpcServiceImpl> rpc_service_;
 
+  std::unique_ptr<RequestTracer> request_tracer_;
   // uri -> channel
   // e.g. 127.0.0.1:9999/v1/completions -> channel1
   //      127.0.0.1:9999/v1/chat/completions -> channel2

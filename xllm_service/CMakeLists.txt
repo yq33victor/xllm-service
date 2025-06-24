@@ -75,12 +75,14 @@ cc_library(
     include/common/concurrent_queue.h
     include/common/threadpool.h
     include/http_service/service.h
+    include/http_service/request_tracer.h
     include/xllm/output.h
     include/xllm/status.h
     include/xllm/uuid.h
   SRCS
     src/common/threadpool.cpp
     src/http_service/service.cpp 
+    src/http_service/request_tracer.cpp
     include/xllm/uuid.cpp
   DEPS
     :xllm_rpc_service

@@ -16,6 +16,7 @@ struct ServerOptions {
   int32_t http_idle_timeout_s = -1;
   int32_t http_num_threads = 32;
   int32_t http_max_concurrency = 128;
+  bool enable_request_trace = false;
 
   // rpc server options
   std::string rpc_server_host = "";

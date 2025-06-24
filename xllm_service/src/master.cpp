@@ -25,6 +25,7 @@ Master::Master(const ServerOptions& server_options)
 
   HttpServiceConfig http_config;
   http_config.num_threads = server_options.http_num_threads;
+  http_config.enable_request_trace = server_options.enable_request_trace;
   http_service_ = std::make_unique<xllm_service::XllmHttpServiceImpl>(
       rpc_service_impl_, http_config);
 }
@@ -170,7 +171,7 @@ DEFINE_string(disagg_pd_policy, "RR", "Disaggregated prefill-decode policy.");
 DEFINE_int32(detect_disconnected_instance_interval,
              15,
              "The interval that server detect the disconnected instance.");
-
+DEFINE_bool(enable_request_trace, false, "Whether to enable request trace");
 static std::atomic<uint32_t> g_signal_received{0};
 void shutdown_handler(int signal) {
   LOG(WARNING) << "Received signal " << signal << ", stopping master...";
@@ -217,6 +218,7 @@ int main(int argc, char* argv[]) {
   server_options.disagg_pd_policy = FLAGS_disagg_pd_policy;
   server_options.detect_disconnected_instance_interval =
       FLAGS_detect_disconnected_instance_interval;
+  server_options.enable_request_trace = FLAGS_enable_request_trace;
 
   xllm_service::Master master(server_options);
 

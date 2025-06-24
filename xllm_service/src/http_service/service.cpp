@@ -38,13 +38,12 @@ XllmHttpServiceImpl::XllmHttpServiceImpl(
       utils::get_bool_env("ENABLE_DECODE_RESPONSE_TO_SERVICE", false);
   initialized_ = true;
   thread_pool_ = std::make_unique<ThreadPool>(config_.num_threads);
+  request_tracer_ =
+      std::make_unique<RequestTracer>(config_.enable_request_trace);
 }
 
 XllmHttpServiceImpl::XllmHttpServiceImpl(const HttpServiceConfig& config)
-    : config_(config) {
-  initialized_ = true;
-  thread_pool_ = std::make_unique<ThreadPool>(config_.num_threads);
-}
+    : XllmHttpServiceImpl(nullptr, config) {}
 
 XllmHttpServiceImpl::~XllmHttpServiceImpl() {}
 
@@ -117,28 +116,35 @@ void XllmHttpServiceImpl::Hello(::google::protobuf::RpcController* controller,
 namespace {
 template <typename T>
 void handle_non_stream_response(brpc::Controller* cntl,
-                                std::shared_ptr<T> call_data) {
+                                std::shared_ptr<T> call_data,
+                                const std::string service_request_id,
+                                RequestTracer* request_tracer) {
   std::unique_ptr<brpc::Controller> cntl_guard(cntl);
   if (cntl->Failed()) {
     LOG(WARNING) << "Fail to send stream generation, " << cntl->ErrorText();
     return;
   }
-
-  call_data->write_and_finish(cntl->response_attachment().to_string());
+  std::string response_data = cntl->response_attachment().to_string();
+  request_tracer->log(service_request_id, response_data);
+  call_data->write_and_finish(response_data);
 }
 
 template <typename T>
 void handle_first_response(brpc::Controller* cntl,
                            std::shared_ptr<T> call_data,
-                           bool stream) {
+                           bool stream,
+                           const std::string service_request_id,
+                           RequestTracer* request_tracer) {
   std::unique_ptr<brpc::Controller> cntl_guard(cntl);
   if (cntl->Failed()) {
     LOG(WARNING) << "Fail to send stream generation, " << cntl->ErrorText();
     return;
   }
   if (stream) {
+    std::string response_data = cntl->response_attachment().to_string();
+    request_tracer->log(service_request_id, response_data);
     // write first token from prefill
-    call_data->write(cntl->response_attachment().to_string());
+    call_data->write(response_data);
   }
   // non-stream, all generated tokens will be sent from decode via rpc service.
 }
@@ -147,8 +153,13 @@ template <typename T>
 class CustomProgressiveReader : public brpc::ProgressiveReader {
  public:
   explicit CustomProgressiveReader(brpc::Controller* redirect_cntl,
-                                   std::shared_ptr<T> call_data)
-      : redirect_cntl_(redirect_cntl), call_data_(call_data) {}
+                                   std::shared_ptr<T> call_data,
+                                   const std::string& service_request_id,
+                                   RequestTracer* request_tracer)
+      : redirect_cntl_(redirect_cntl),
+        call_data_(call_data),
+        service_request_id_(service_request_id),
+        request_tracer_(request_tracer) {}
 
   virtual ~CustomProgressiveReader() { delete redirect_cntl_; }
 
@@ -158,7 +169,9 @@ class CustomProgressiveReader : public brpc::ProgressiveReader {
   // A temporary error may be handled by blocking this function, which
   // may block the HTTP parsing on the socket.
   virtual butil::Status OnReadOnePart(const void* data, size_t length) {
-    call_data_->write(std::string((char*)data, length));
+    std::string response_data = std::string((char*)data, length);
+    request_tracer_->log(service_request_id_, response_data);
+    call_data_->write(response_data);
     return butil::Status::OK();
   }
 
@@ -173,6 +186,8 @@ class CustomProgressiveReader : public brpc::ProgressiveReader {
  private:
   brpc::Controller* redirect_cntl_ = nullptr;
   std::shared_ptr<T> call_data_;
+  std::string service_request_id_;
+  RequestTracer* request_tracer_;
 };
 }  // namespace
 
@@ -218,8 +233,13 @@ void XllmHttpServiceImpl::handle(std::shared_ptr<T> call_data,
     // 1. tokens will be received via rpc channel.
     //
     if (enable_decode_response_to_service_) {
-      google::protobuf::Closure* done = brpc::NewCallback(
-          &handle_first_response<T>, redirect_cntl, call_data, stream);
+      google::protobuf::Closure* done =
+          brpc::NewCallback(&handle_first_response<T>,
+                            redirect_cntl,
+                            call_data,
+                            stream,
+                            service_request_id,
+                            request_tracer_.get());
       channel_ptr->CallMethod(NULL, redirect_cntl, NULL, NULL, done);
       if (redirect_cntl->Failed()) {
         LOG(ERROR) << "Redirect to instance error: "
@@ -249,12 +269,17 @@ void XllmHttpServiceImpl::handle(std::shared_ptr<T> call_data,
         delete redirect_cntl;
         return;
       }
-      auto reader = new CustomProgressiveReader<T>(redirect_cntl, call_data);
+      auto reader = new CustomProgressiveReader<T>(
+          redirect_cntl, call_data, service_request_id, request_tracer_.get());
       // redirect_cntl and reader will be deleted in CustomProgressiveReader.
       redirect_cntl->ReadProgressiveAttachmentBy(reader);
     } else {
-      google::protobuf::Closure* done = brpc::NewCallback(
-          &handle_non_stream_response<T>, redirect_cntl, call_data);
+      google::protobuf::Closure* done =
+          brpc::NewCallback(&handle_non_stream_response<T>,
+                            redirect_cntl,
+                            call_data,
+                            service_request_id,
+                            request_tracer_.get());
       channel_ptr->CallMethod(NULL, redirect_cntl, NULL, NULL, done);
       if (redirect_cntl->Failed()) {
         LOG(ERROR) << "Redirect to instance error: "
@@ -362,6 +387,7 @@ void XllmHttpServiceImpl::post_serving(
   std::string service_request_id = generate_service_request_id(serving_method);
   json_value["service_request_id"] = service_request_id;
   std::string req_attachment = json_value.dump();
+  request_tracer_->log(service_request_id, req_attachment);
 
   // redistribute the request to the correct P/D instance
   // TODO: redistribute policy to select the instance
