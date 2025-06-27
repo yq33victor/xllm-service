@@ -5,6 +5,7 @@
 #include <chrono>
 #include <filesystem>
 #include <mutex>
+#include <nlohmann/json.hpp>
 
 namespace xllm_service {
 
@@ -30,11 +31,15 @@ RequestTracer::RequestTracer(bool enable_request_trace)
 void RequestTracer::log(const std::string& service_request_id,
                         const std::string& input_or_output) {
   if (!enable_request_trace_) return;
+
   std::lock_guard<std::mutex> lock(mutex_);
   std::string timestamp = get_current_timestamp();
 
-  log_stream_ << "{\"timestamp\": \"" << timestamp << "\", "
-              << "\"service_request_id\": \"" << service_request_id << "\", "
-              << "\"data\": \"" << input_or_output << "\"}\n";
+  nlohmann::json j;
+  j["timestamp"] = timestamp;
+  j["service_request_id"] = service_request_id;
+  j["data"] = input_or_output;
+
+  log_stream_ << j.dump() << "\n";
 }
 }  // namespace xllm_service
