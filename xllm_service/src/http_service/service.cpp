@@ -6,6 +6,7 @@
 #include <brpc/progressive_reader.h>
 #include <glog/logging.h>
 
+#include <functional>
 #include <nlohmann/json.hpp>
 
 #include "chat.pb.h"
@@ -116,35 +117,27 @@ void XllmHttpServiceImpl::Hello(::google::protobuf::RpcController* controller,
 namespace {
 template <typename T>
 void handle_non_stream_response(brpc::Controller* cntl,
-                                std::shared_ptr<T> call_data,
-                                const std::string service_request_id,
-                                RequestTracer* request_tracer) {
+                                std::shared_ptr<T> call_data) {
   std::unique_ptr<brpc::Controller> cntl_guard(cntl);
   if (cntl->Failed()) {
     LOG(WARNING) << "Fail to send stream generation, " << cntl->ErrorText();
     return;
   }
-  std::string response_data = cntl->response_attachment().to_string();
-  request_tracer->log(service_request_id, response_data);
-  call_data->write_and_finish(response_data);
+  call_data->write_and_finish(cntl->response_attachment().to_string());
 }
 
 template <typename T>
 void handle_first_response(brpc::Controller* cntl,
                            std::shared_ptr<T> call_data,
-                           bool stream,
-                           const std::string service_request_id,
-                           RequestTracer* request_tracer) {
+                           bool stream) {
   std::unique_ptr<brpc::Controller> cntl_guard(cntl);
   if (cntl->Failed()) {
     LOG(WARNING) << "Fail to send stream generation, " << cntl->ErrorText();
     return;
   }
   if (stream) {
-    std::string response_data = cntl->response_attachment().to_string();
-    request_tracer->log(service_request_id, response_data);
     // write first token from prefill
-    call_data->write(response_data);
+    call_data->write(cntl->response_attachment().to_string());
   }
   // non-stream, all generated tokens will be sent from decode via rpc service.
 }
@@ -153,13 +146,8 @@ template <typename T>
 class CustomProgressiveReader : public brpc::ProgressiveReader {
  public:
   explicit CustomProgressiveReader(brpc::Controller* redirect_cntl,
-                                   std::shared_ptr<T> call_data,
-                                   const std::string& service_request_id,
-                                   RequestTracer* request_tracer)
-      : redirect_cntl_(redirect_cntl),
-        call_data_(call_data),
-        service_request_id_(service_request_id),
-        request_tracer_(request_tracer) {}
+                                   std::shared_ptr<T> call_data)
+      : redirect_cntl_(redirect_cntl), call_data_(call_data) {}
 
   virtual ~CustomProgressiveReader() { delete redirect_cntl_; }
 
@@ -169,9 +157,7 @@ class CustomProgressiveReader : public brpc::ProgressiveReader {
   // A temporary error may be handled by blocking this function, which
   // may block the HTTP parsing on the socket.
   virtual butil::Status OnReadOnePart(const void* data, size_t length) {
-    std::string response_data = std::string((char*)data, length);
-    request_tracer_->log(service_request_id_, response_data);
-    call_data_->write(response_data);
+    call_data_->write(std::string((char*)data, length));
     return butil::Status::OK();
   }
 
@@ -186,8 +172,6 @@ class CustomProgressiveReader : public brpc::ProgressiveReader {
  private:
   brpc::Controller* redirect_cntl_ = nullptr;
   std::shared_ptr<T> call_data_;
-  std::string service_request_id_;
-  RequestTracer* request_tracer_;
 };
 }  // namespace
 
@@ -233,13 +217,8 @@ void XllmHttpServiceImpl::handle(std::shared_ptr<T> call_data,
     // 1. tokens will be received via rpc channel.
     //
     if (enable_decode_response_to_service_) {
-      google::protobuf::Closure* done =
-          brpc::NewCallback(&handle_first_response<T>,
-                            redirect_cntl,
-                            call_data,
-                            stream,
-                            service_request_id,
-                            request_tracer_.get());
+      google::protobuf::Closure* done = brpc::NewCallback(
+          &handle_first_response<T>, redirect_cntl, call_data, stream);
       channel_ptr->CallMethod(NULL, redirect_cntl, NULL, NULL, done);
       if (redirect_cntl->Failed()) {
         LOG(ERROR) << "Redirect to instance error: "
@@ -269,17 +248,12 @@ void XllmHttpServiceImpl::handle(std::shared_ptr<T> call_data,
         delete redirect_cntl;
         return;
       }
-      auto reader = new CustomProgressiveReader<T>(
-          redirect_cntl, call_data, service_request_id, request_tracer_.get());
+      auto reader = new CustomProgressiveReader<T>(redirect_cntl, call_data);
       // redirect_cntl and reader will be deleted in CustomProgressiveReader.
       redirect_cntl->ReadProgressiveAttachmentBy(reader);
     } else {
-      google::protobuf::Closure* done =
-          brpc::NewCallback(&handle_non_stream_response<T>,
-                            redirect_cntl,
-                            call_data,
-                            service_request_id,
-                            request_tracer_.get());
+      google::protobuf::Closure* done = brpc::NewCallback(
+          &handle_non_stream_response<T>, redirect_cntl, call_data);
       channel_ptr->CallMethod(NULL, redirect_cntl, NULL, NULL, done);
       if (redirect_cntl->Failed()) {
         LOG(ERROR) << "Redirect to instance error: "
@@ -405,13 +379,22 @@ void XllmHttpServiceImpl::post_serving(
     }
   }
 
+  std::function<void(const std::string&)> trace_callback;
+  if (config_.enable_request_trace) {
+    trace_callback = [this, service_request_id](const std::string& message) {
+      request_tracer_->log(service_request_id, message);
+    };
+  } else {
+    trace_callback = nullptr;
+  }
+
   if (serving_method == "/v1/completions") {
     auto arena = response->GetArena();
     auto resp_pb =
         google::protobuf::Arena::CreateMessage<llm::proto::CompletionResponse>(
             arena);
     auto call_data = std::make_shared<CompletionCallData>(
-        cntl, stream, done_guard.release(), resp_pb);
+        cntl, stream, done_guard.release(), resp_pb, trace_callback);
     handle_v1_completions(call_data,
                           req_attachment,
                           service_request_id,
@@ -424,7 +407,7 @@ void XllmHttpServiceImpl::post_serving(
     auto resp_pb =
         google::protobuf::Arena::CreateMessage<llm::proto::ChatResponse>(arena);
     auto call_data = std::make_shared<ChatCallData>(
-        cntl, stream, done_guard.release(), resp_pb);
+        cntl, stream, done_guard.release(), resp_pb, trace_callback);
     handle_v1_chat_completions(call_data,
                                req_attachment,
                                service_request_id,

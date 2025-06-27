@@ -6,6 +6,7 @@
 #include <grpcpp/grpcpp.h>
 #include <json2pb/pb_to_json.h>
 
+#include <functional>
 #include <string>
 
 // Interface for the classes that are used to handle grpc requests.
@@ -45,11 +46,16 @@ class CallData {
 template <typename Request, typename Response>
 class StreamCallData : public CallData {
  public:
-  StreamCallData(brpc::Controller* controller,
-                 bool stream,
-                 ::google::protobuf::Closure* done,
-                 Response* response)
-      : controller_(controller), done_(done), response_(response) {
+  StreamCallData(
+      brpc::Controller* controller,
+      bool stream,
+      ::google::protobuf::Closure* done,
+      Response* response,
+      std::function<void(const std::string&)> trace_callback = nullptr)
+      : controller_(controller),
+        done_(done),
+        response_(response),
+        trace_callback_(std::move(trace_callback)) {
     stream_ = stream;
     get_x_request_id(x_request_id, controller_);
     get_x_request_time(x_request_time, controller_);
@@ -84,6 +90,7 @@ class StreamCallData : public CallData {
 
   // For non stream response
   bool write_and_finish(const std::string& attachment /*json string*/) {
+    if (trace_callback_) trace_callback_(attachment);
     controller_->response_attachment() = attachment;
     return true;
   }
@@ -136,6 +143,7 @@ class StreamCallData : public CallData {
 
   // For stream response
   bool write(const std::string& attachment) {
+    if (trace_callback_) trace_callback_(attachment);
     io_buf_.clear();
     io_buf_.append(attachment);
     pa_->Write(io_buf_);
@@ -186,4 +194,5 @@ class StreamCallData : public CallData {
 
   bool finished_ = false;
   json2pb::Pb2JsonOptions json_options_;
+  std::function<void(const std::string&)> trace_callback_;
 };
