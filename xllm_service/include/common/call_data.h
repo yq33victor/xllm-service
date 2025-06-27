@@ -119,6 +119,12 @@ class StreamCallData : public CallData {
       return finish_with_error(grpc::StatusCode::INTERNAL, err_msg);
     }
 
+    if (trace_callback_) {
+      std::string str;
+      controller_->response_attachment().copy_to(&str);
+      trace_callback_(str);
+    }
+
     return true;
   }
 
@@ -137,6 +143,11 @@ class StreamCallData : public CallData {
 
   // For stream response
   bool write(const butil::IOBuf& attachment_iobuf) {
+    if (trace_callback_) {
+      std::string str;
+      attachment_iobuf.copy_to(&str);
+      trace_callback_(str);
+    }
     pa_->Write(attachment_iobuf);
     return true;
   }
@@ -165,6 +176,12 @@ class StreamCallData : public CallData {
       return false;
     }
     io_buf_.append("\n\n");
+
+    if (trace_callback_) {
+      std::string str;
+      io_buf_.copy_to(&str);
+      trace_callback_(str);
+    }
 
     pa_->Write(io_buf_);
     return true;
