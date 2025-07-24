@@ -54,7 +54,7 @@ struct TokenizerArgs {
 inline std::ostream& operator<<(std::ostream& os, const TokenizerArgs& args) {
   os << "TokenizerArgs: [";
   os << "tokenizer_type: " << args.tokenizer_type();
-//  os << ", chat_template: " << args.chat_template();
+  //  os << ", chat_template: " << args.chat_template();
   os << ", add_bos_token: " << args.add_bos_token();
   os << ", add_eos_token: " << args.add_eos_token();
   os << ", bos_token: " << args.bos_token();

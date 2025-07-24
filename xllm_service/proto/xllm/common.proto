@@ -13,16 +13,6 @@ message Usage {
   optional int32 total_tokens = 3 [json_name="total_tokens"];
 }
 
-enum Priority {
-  DEFAULT = 0;
-
-  HIGH = 1;
-
-  NORMAL = 2;
-
-  LOW = 3;
-}
-
 // Options for streaming response.
 message StreamOptions{
   // if set, an additional chunk with usage will be streamed before the data: [DONE] message.

@@ -69,7 +69,6 @@ class JsonReader {
 
   nlohmann::json data() const { return data_; }
 
-
  private:
   nlohmann::json data_;
 };

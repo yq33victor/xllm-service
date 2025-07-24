@@ -106,9 +106,6 @@ message ChatRequest {
   // the list of token ids where the API will stop generating further tokens.
   repeated int32 stop_token_ids = 16;
 
-  // request priority. default = DEFAULT
-  optional Priority priority = 15;
-
   optional string request_id = 24;
 }
 

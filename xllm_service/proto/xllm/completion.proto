@@ -83,9 +83,6 @@ message CompletionRequest {
   // modify the likelihood of specified tokens appearing in the completion.
   // map<int64, float> logit_bias = 18;
 
-  // request priority. default = DEFAULT
-  optional Priority priority = 17;
-
   optional string request_id = 24;
 }
 
