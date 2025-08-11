@@ -73,6 +73,7 @@ struct InstanceMetaInfo {
   std::string rpc_address = "";
   InstanceType type = InstanceType::DEFAULT;
   std::vector<uint64_t> cluster_ids;
+  std::vector<std::string> addrs;
   std::vector<uint64_t> k_cache_ids;
   std::vector<uint64_t> v_cache_ids;
   int32_t dp_size;

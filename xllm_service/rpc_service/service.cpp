@@ -274,6 +274,8 @@ void XllmRpcService::RegisterInstance(
   InstanceMetaInfo metainfo(req->name(), req->rpc_address(), type);
   metainfo.cluster_ids = std::vector<uint64_t>(req->cluster_ids().begin(),
                                                req->cluster_ids().end());
+  metainfo.addrs =
+      std::vector<std::string>(req->addrs().begin(), req->addrs().end());
   metainfo.k_cache_ids = std::vector<uint64_t>(req->k_cache_ids().begin(),
                                                req->k_cache_ids().end());
   metainfo.v_cache_ids = std::vector<uint64_t>(req->v_cache_ids().begin(),
@@ -300,6 +302,9 @@ void XllmRpcService::GetInstanceInfo(google::protobuf::RpcController* cntl_base,
   }
   for (auto& cluster_id : metainfo.cluster_ids) {
     *(resp->mutable_cluster_ids()->Add()) = cluster_id;
+  }
+  for (auto& addr : metainfo.addrs) {
+    *(resp->mutable_addrs()->Add()) = addr;
   }
   for (auto& k_cache_id : metainfo.k_cache_ids) {
     *(resp->mutable_k_cache_ids()->Add()) = k_cache_id;
