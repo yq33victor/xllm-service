@@ -1,6 +1,6 @@
 #pragma once
 
-#include "huggingface/tokenizers.h"
+#include "tokenizers/tokenizers.h"
 #include "tokenizer.h"
 
 namespace xllm_service {

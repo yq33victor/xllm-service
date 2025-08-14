@@ -6,7 +6,7 @@
 
 #include "common/types.h"
 #include "common/utils.h"
-#include "xllm/status.h"
+#include "common/xllm/status.h"
 
 namespace xllm_service {
 

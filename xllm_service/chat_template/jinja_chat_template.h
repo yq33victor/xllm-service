@@ -6,7 +6,7 @@
 #include <string>
 
 #include "chat_template.h"
-#include "tokenizers/tokenizer_args.h"
+#include "tokenizer/tokenizer_args.h"
 
 namespace xllm_service {
 

@@ -7,8 +7,8 @@
 #include "common/call_data.h"
 #include "common/threadpool.h"
 #include "completion.pb.h"
-#include "xllm/output.h"
-#include "xllm/status.h"
+#include "common/xllm/output.h"
+#include "common/xllm/status.h"
 #include "xllm_rpc_service.pb.h"
 
 namespace xllm_service {

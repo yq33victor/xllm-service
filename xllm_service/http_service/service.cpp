@@ -15,7 +15,7 @@
 #include "common/utils.h"
 #include "completion.pb.h"
 #include "rpc_service/service.h"
-#include "xllm/uuid.h"
+#include "common/xllm/uuid.h"
 
 namespace xllm_service {
 

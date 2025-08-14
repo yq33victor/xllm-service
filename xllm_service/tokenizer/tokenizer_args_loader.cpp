@@ -1,5 +1,4 @@
-
-#include "tokenizers/tokenizer_args_loader.h"
+#include "tokenizer/tokenizer_args_loader.h"
 
 #include <glog/logging.h>
 

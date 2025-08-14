@@ -1,8 +1,8 @@
-#include "tokenizers/hf_tokenizer.h"
+#include "tokenizer/hf_tokenizer.h"
 
 #include <glog/logging.h>
 
-#include "huggingface/tokenizers.h"
+#include "tokenizers/tokenizers.h"
 
 namespace xllm_service {
 

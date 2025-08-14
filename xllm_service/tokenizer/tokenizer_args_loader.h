@@ -1,6 +1,6 @@
 #pragma once
 #include "common/json_reader.h"
-#include "tokenizers/tokenizer_args.h"
+#include "tokenizer_args.h"
 
 namespace xllm_service {
 

@@ -17,3 +17,7 @@
 
 # gtest
 /Testing
+
+# rust
+Cargo.lock
+

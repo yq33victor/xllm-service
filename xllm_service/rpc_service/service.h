@@ -9,8 +9,8 @@
 #include "completion.pb.h"
 #include "instance_mgr.h"
 #include "response_handler.h"
-#include "xllm/output.h"
-#include "xllm/status.h"
+#include "common/xllm/output.h"
+#include "common/xllm/status.h"
 #include "xllm_rpc_service.pb.h"
 
 namespace xllm_service {
