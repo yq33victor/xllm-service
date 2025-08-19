@@ -43,6 +43,8 @@ message InstanceMetaInfo {
 // TODO: add metainfo/metrics ?
 message HeartbeatRequest {
   string name = 1;
+  KvCacheEvent cache_event = 2;
+  LoadMetrics load_metrics = 3;
 }
 
 message InstanceID {
@@ -102,6 +104,7 @@ message GenerationStatus {
 message DisaggStreamGeneration {
   // req id
   string req_id = 1;
+  // req id which is generated in xllm service.
   string service_req_id = 2;
   // the status of the request
   GenerationStatus gen_status = 3;

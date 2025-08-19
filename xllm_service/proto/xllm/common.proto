@@ -22,3 +22,11 @@ message StreamOptions{
 message Status {
   bool ok = 1;
 }
+
+message Routing {
+  repeated int32 token_ids = 1;
+
+  string prefill_name = 2;
+
+  string decode_name = 3;
+}

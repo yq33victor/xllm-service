@@ -107,6 +107,10 @@ message ChatRequest {
   repeated int32 stop_token_ids = 16;
 
   optional string request_id = 24;
+
+  optional string service_request_id = 25;
+
+  Routing routing = 28;
 }
 
 message ChatLogProbData {

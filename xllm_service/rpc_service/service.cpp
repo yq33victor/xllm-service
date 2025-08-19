@@ -321,6 +321,7 @@ void XllmRpcService::Heartbeat(google::protobuf::RpcController* cntl_base,
                                google::protobuf::Closure* done) {
   brpc::ClosureGuard done_guard(done);
   auto inst_name = req->name();
+  // TODO: handle req.cache_event and req.load_metrics
   xllm_service_->heartbeat(inst_name);
   resp->set_ok(true);
 }
