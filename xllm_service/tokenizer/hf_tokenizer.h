@@ -1,7 +1,7 @@
 #pragma once
 
-#include "tokenizers/tokenizers.h"
 #include "tokenizer.h"
+#include "tokenizers/tokenizers.h"
 
 namespace xllm_service {
 

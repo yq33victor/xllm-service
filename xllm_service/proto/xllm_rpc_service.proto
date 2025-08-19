@@ -40,6 +40,17 @@ message InstanceMetaInfo {
   int32 dp_size = 7;
 }
 
+message KvCacheEvent {
+  repeated bytes stored_cache = 1;
+  repeated bytes removed_cache = 2;
+  repeated bytes offload_cache = 3;
+}
+
+message LoadMetrics {
+  uint64 waiting_requests_num = 1;
+  float gpu_cache_usage_perc = 2;
+}
+
 // TODO: add metainfo/metrics ?
 message HeartbeatRequest {
   string name = 1;

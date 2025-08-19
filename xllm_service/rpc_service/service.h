@@ -6,11 +6,11 @@
 #include "chat.pb.h"
 #include "common/call_data.h"
 #include "common/threadpool.h"
+#include "common/xllm/output.h"
+#include "common/xllm/status.h"
 #include "completion.pb.h"
 #include "instance_mgr.h"
 #include "response_handler.h"
-#include "common/xllm/output.h"
-#include "common/xllm/status.h"
 #include "xllm_rpc_service.pb.h"
 
 namespace xllm_service {

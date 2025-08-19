@@ -13,9 +13,9 @@
 #include "common/call_data.h"
 #include "common/closure_guard.h"
 #include "common/utils.h"
+#include "common/xllm/uuid.h"
 #include "completion.pb.h"
 #include "rpc_service/service.h"
-#include "common/xllm/uuid.h"
 
 namespace xllm_service {
 

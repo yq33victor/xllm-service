@@ -6,9 +6,9 @@
 #include "chat.pb.h"
 #include "common/call_data.h"
 #include "common/threadpool.h"
-#include "completion.pb.h"
 #include "common/xllm/output.h"
 #include "common/xllm/status.h"
+#include "completion.pb.h"
 #include "xllm_rpc_service.pb.h"
 
 namespace xllm_service {
