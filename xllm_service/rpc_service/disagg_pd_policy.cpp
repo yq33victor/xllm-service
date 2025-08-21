@@ -13,6 +13,7 @@ void debug_print(const std::string& action,
                  const std::string& type,
                  int idx) {
   if (utils::enable_debug_log()) {
+    // AAA
     LOG(INFO) << "DisaggPdPolicy " << action << " instance, name = " << name
               << ", type = " << type << ", idx = " << idx;
   }
