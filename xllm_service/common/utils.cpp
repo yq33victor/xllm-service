@@ -14,6 +14,7 @@ bool enable_debug_log() {
   static bool debug_log_enabled = false;
   static std::once_flag debug_flag;
   std::call_once(debug_flag, []() {
+    // Add a comment to explain the purpose of this flag
     const char* enable_debug_env = std::getenv("ENABLE_XLLM_DEBUG_LOG");
     if (enable_debug_env != nullptr && std::string(enable_debug_env) == "1") {
       debug_log_enabled = true;
