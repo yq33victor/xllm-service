@@ -1,0 +1,66 @@
+name: CheckFormat
+on: 
+  workflow_dispatch:  # 手动触发
+  push:
+    branches: [main]
+    paths: ['xllm_service/**']
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main]
+    paths: ['xllm_service/**']
+
+jobs:
+  format-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install clang-format
+        run: |
+          # 优先使用 apt 安装（更稳定，包含 git-clang-format）
+          sudo apt-get update && sudo apt-get install -y clang-format  colordiff
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine base commit for comparison
+        id: get_base_commit
+        run: |
+          # 根据事件类型动态确定对比的基准提交
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            # PR 事件：对比目标分支的最新提交
+            echo "base_commit=${{ github.event.pull_request.base.sha }}" >> $GITHUB_OUTPUT
+          else
+            # 推送/手动触发：对比当前提交的上一个版本
+            echo "base_commit=${{ github.sha }}~1" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Check code format
+        shell: /usr/bin/bash {0}
+        run: |
+          # 使用上一步获取的基准提交
+          BASE_COMMIT="${{ steps.get_base_commit.outputs.base_commit }}"
+          
+          # 执行 clang-format 检查并捕获差异
+          diff=$(git-clang-format \
+            --extensions="c,h,cc,cp,cpp,c++,cxx,hh,hpp,hxx,inc,cu,cuh" \
+            --commit "$BASE_COMMIT" \
+            --diff)
+
+          # 检查是否无格式问题
+          if [ "$diff" = "no modified files to format" ] || [ "$diff" = "clang-format did not modify any files" ]; then
+            echo "✅ Code format is correct"
+            exit 0
+          fi
+
+          # 格式错误时输出提示
+          printf "\n❌ You have introduced coding style breakages. You can:\n"
+          echo "1> Fix with: git-clang-format --commit $BASE_COMMIT"
+          echo "2> Disable checks for specific code blocks:"
+          echo "     // clang-format off"
+          echo "     [your code here]"
+          echo "     // clang-format on"
+
+          printf "\n\033[1mSuggested changes:\n\n"
+          echo "$diff"
+          exit 1
